@@ -76,16 +76,47 @@ export function nowMinutes(now: Date = new Date()): number {
 
 /* ---------- formatting ---------- */
 
+/**
+ * Locale and words used by the formatters below. The i18n provider sets these
+ * when the language changes; English is the default (and what tests use).
+ */
+export type DateWords = {
+  today: string;
+  tomorrow: string;
+  yesterday: string;
+  hours: string; // "{h}h"
+  minutes: string; // "{m}m"
+  hoursMinutes: string; // "{h}h {m}m"
+};
+
+let locale: string | undefined;
+let words: DateWords = {
+  today: "Today",
+  tomorrow: "Tomorrow",
+  yesterday: "Yesterday",
+  hours: "{h}h",
+  minutes: "{m}m",
+  hoursMinutes: "{h}h {m}m",
+};
+
+export function setDateFormat(nextLocale: string | undefined, nextWords: DateWords): void {
+  locale = nextLocale;
+  words = nextWords;
+}
+
 const fmtCache = new Map<string, Intl.DateTimeFormat>();
 function fmt(opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const id = JSON.stringify(opts);
+  const id = `${locale ?? ""}|${JSON.stringify(opts)}`;
   let f = fmtCache.get(id);
   if (!f) {
-    f = new Intl.DateTimeFormat(undefined, opts);
+    f = new Intl.DateTimeFormat(locale, opts);
     fmtCache.set(id, f);
   }
   return f;
 }
+
+const fill = (template: string, vars: Record<string, number>) =>
+  template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m));
 
 export function formatDayLong(key: DateKey): string {
   return fmt({ weekday: "long", month: "long", day: "numeric" }).format(fromKey(key));
@@ -95,7 +126,7 @@ export function formatDayShort(key: DateKey): string {
   return fmt({ month: "short", day: "numeric" }).format(fromKey(key));
 }
 
-export function formatWeekday(key: DateKey, style: "short" | "narrow" = "short"): string {
+export function formatWeekday(key: DateKey, style: "long" | "short" | "narrow" = "short"): string {
   return fmt({ weekday: style }).format(fromKey(key));
 }
 
@@ -104,12 +135,16 @@ export function formatTime(t: string): string {
   return fmt({ hour: "numeric", minute: "2-digit" }).format(d);
 }
 
+export function formatClockTime(timestamp: number): string {
+  return fmt({ hour: "numeric", minute: "2-digit" }).format(timestamp);
+}
+
 /** "Today", "Tomorrow", "Yesterday", or a short date. */
 export function relativeDayLabel(key: DateKey, today: DateKey = todayKey()): string {
   const diff = diffDays(key, today);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  if (diff === -1) return "Yesterday";
+  if (diff === 0) return words.today;
+  if (diff === 1) return words.tomorrow;
+  if (diff === -1) return words.yesterday;
   return formatDayShort(key);
 }
 
@@ -117,8 +152,8 @@ export function formatDuration(minutes: number): string {
   const m = Math.max(0, Math.round(minutes));
   const h = Math.floor(m / 60);
   const rest = m % 60;
-  if (h === 0) return `${rest}m`;
-  return rest === 0 ? `${h}h` : `${h}h ${rest}m`;
+  if (h === 0) return fill(words.minutes, { m: rest });
+  return rest === 0 ? fill(words.hours, { h }) : fill(words.hoursMinutes, { h, m: rest });
 }
 
 export function formatClock(totalSeconds: number): string {

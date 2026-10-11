@@ -9,10 +9,12 @@ import { Card, CardHeader, EmptyState, PageHeader, ProjectDot } from "../compone
 import { BarList, ColumnChart, type BarRow } from "../components/charts";
 import { IconChart, IconChevronLeft, IconChevronRight, IconFlame } from "../components/icons";
 import { cx } from "../lib/utils";
+import { useI18n } from "../i18n/context";
 
 function Delta({ current, previous, unit }: { current: number; previous: number; unit: "duration" | "count" }) {
-  if (previous === 0 && current === 0) return <span className="text-xs text-muted">No activity either week</span>;
-  if (previous === 0) return <span className="text-xs text-muted">No data last week</span>;
+  const { m, f } = useI18n();
+  if (previous === 0 && current === 0) return <span className="text-xs text-muted">{m.insights.deltaNone}</span>;
+  if (previous === 0) return <span className="text-xs text-muted">{m.insights.deltaNoPrev}</span>;
   const diff = current - previous;
   const pct = Math.round((diff / previous) * 100);
   const up = diff > 0;
@@ -20,7 +22,7 @@ function Delta({ current, previous, unit }: { current: number; previous: number;
   const amount = unit === "duration" ? formatDuration(Math.abs(diff)) : String(Math.abs(diff));
   return (
     <span className={cx("text-xs font-medium", same ? "text-muted" : up ? "text-brand-600 dark:text-brand-400" : "text-[#d9730d]")}>
-      {same ? "Same as last week" : `${up ? "▲" : "▼"} ${amount} (${up ? "+" : ""}${pct}%) vs last week`}
+      {same ? m.insights.deltaSame : f(m.insights.deltaVs, { arrow: up ? "▲" : "▼", amount, pct: `${up ? "+" : ""}${pct}` })}
     </span>
   );
 }
@@ -36,7 +38,8 @@ function Stat({ label, value, children }: { label: string; value: string; childr
 }
 
 export function Insights() {
-  usePageTitle("Insights");
+  const { m, f, p } = useI18n();
+  usePageTitle(m.insights.title);
   const state = useAppState();
   const { tasks, sessions, habits, projects, settings } = state;
   const [offset, setOffset] = useState(0);
@@ -73,7 +76,7 @@ export function Insights() {
           ? { key: p.id, label: p.name, value: minutes, swatch: <ProjectDot color={p.color} />, colorClass: projectDot[p.color] }
           : {
               key: "none",
-              label: "No project",
+              label: m.common.noProject,
               value: minutes,
               swatch: <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full bg-ink-soft/50" />,
               colorClass: "bg-ink-soft/50",
@@ -97,7 +100,7 @@ export function Insights() {
     };
     // days/prevDays derive from offset + settings
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, sessions, habits, projects, settings, offset, today]);
+  }, [tasks, sessions, habits, projects, settings, offset, today, m]);
 
   const columns = (values: number[]) =>
     days.map((d, i) => ({ key: d, label: formatWeekday(d), sublabel: String(fromKey(d).getDate()), value: values[i] }));
@@ -108,20 +111,20 @@ export function Insights() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Insights"
-        subtitle={isCurrent ? `This week · ${rangeLabel}` : offset === -1 ? `Last week · ${rangeLabel}` : rangeLabel}
+        title={m.insights.title}
+        subtitle={isCurrent ? f(m.insights.thisWeek, { range: rangeLabel }) : offset === -1 ? f(m.insights.lastWeek, { range: rangeLabel }) : rangeLabel}
         actions={
           <div className="flex items-center gap-1">
             {!isCurrent && (
-              <Button variant="secondary" size="sm" className="mr-1" onClick={() => setOffset(0)}>
-                This week
+              <Button variant="secondary" size="sm" className="me-1" onClick={() => setOffset(0)}>
+                {m.habits.thisWeek}
               </Button>
             )}
-            <IconButton label="Previous week" onClick={() => setOffset((o) => o - 1)}>
-              <IconChevronLeft />
+            <IconButton label={m.insights.prevWeek} onClick={() => setOffset((o) => o - 1)}>
+              <IconChevronLeft className="rtl:-scale-x-100" />
             </IconButton>
-            <IconButton label="Next week" disabled={isCurrent} onClick={() => setOffset((o) => o + 1)}>
-              <IconChevronRight />
+            <IconButton label={m.insights.nextWeek} disabled={isCurrent} onClick={() => setOffset((o) => o + 1)}>
+              <IconChevronRight className="rtl:-scale-x-100" />
             </IconButton>
           </div>
         }
@@ -129,49 +132,49 @@ export function Insights() {
 
       {!hasAnyData ? (
         <Card>
-          <EmptyState icon={<IconChart width={22} height={22} />} title="Your insights will appear here">
-            Complete tasks, check off habits and run focus sessions — DayFlow turns them into weekly trends.
+          <EmptyState icon={<IconChart width={22} height={22} />} title={m.insights.emptyTitle}>
+            {m.insights.emptyBody}
           </EmptyState>
         </Card>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Stat label="Focus time" value={formatDuration(data.focusTotal)}>
+            <Stat label={m.insights.focusTime} value={formatDuration(data.focusTotal)}>
               <Delta current={data.focusTotal} previous={data.prevFocusTotal} unit="duration" />
             </Stat>
-            <Stat label="Tasks completed" value={String(data.doneTotal)}>
+            <Stat label={m.insights.tasksCompleted} value={String(data.doneTotal)}>
               <Delta current={data.doneTotal} previous={data.prevDoneTotal} unit="count" />
             </Stat>
-            <Stat label="Daily focus average" value={formatDuration(data.avgFocus)}>
+            <Stat label={m.insights.dailyAverage} value={formatDuration(data.avgFocus)}>
               <span className="text-xs text-muted">
-                Goal met on {data.goalDays} day{data.goalDays === 1 ? "" : "s"}
+                {p(m.insights.goalMet, data.goalDays)}
               </span>
             </Stat>
-            <Stat label="Habit targets met" value={data.habitRate === null ? "—" : `${data.habitRate}%`}>
-              <span className="text-xs text-muted">{data.habitRows.length ? "Across all active habits" : "No active habits"}</span>
+            <Stat label={m.insights.habitTargets} value={data.habitRate === null ? "—" : `${data.habitRate}%`}>
+              <span className="text-xs text-muted">{data.habitRows.length ? m.insights.acrossHabits : m.insights.noHabits}</span>
             </Stat>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-              <CardHeader title="Focus time per day" />
+              <CardHeader title={m.insights.focusPerDay} />
               <div className="px-5 pb-5 pt-3">
                 <ColumnChart
-                  title="Focus time per day"
+                  title={m.insights.focusPerDay}
                   data={columns(data.focus)}
                   format={(v) => (v === 0 ? "0" : formatDuration(v))}
-                  tickFormat={(v) => (v === 0 ? "0" : v < 60 ? `${v}m` : `${Number((v / 60).toFixed(1))}h`)}
+                  tickFormat={(v) => (v === 0 ? "0" : v < 60 ? f(m.time.minutes, { m: v }) : f(m.time.hours, { h: Number((v / 60).toFixed(1)) }))}
                   kind="duration"
-                  reference={{ value: settings.dailyFocusGoal, label: `Goal ${formatDuration(settings.dailyFocusGoal)}` }}
+                  reference={{ value: settings.dailyFocusGoal, label: f(m.insights.goal, { time: formatDuration(settings.dailyFocusGoal) }) }}
                   highlightKey={isCurrent ? today : undefined}
                 />
               </div>
             </Card>
             <Card>
-              <CardHeader title="Tasks completed per day" />
+              <CardHeader title={m.insights.tasksPerDay} />
               <div className="px-5 pb-5 pt-3">
                 <ColumnChart
-                  title="Tasks completed per day"
+                  title={m.insights.tasksPerDay}
                   data={columns(data.done)}
                   format={(v) => String(v)}
                   kind="count"
@@ -180,20 +183,20 @@ export function Insights() {
               </div>
             </Card>
             <Card>
-              <CardHeader title="Focus by project" />
+              <CardHeader title={m.insights.byProject} />
               <div className="px-5 pb-5 pt-3">
                 {data.projectRows.length ? (
-                  <BarList title="Focus by project" rows={data.projectRows} format={formatDuration} />
+                  <BarList title={m.insights.byProject} rows={data.projectRows} format={formatDuration} />
                 ) : (
-                  <p className="py-6 text-center text-sm text-muted">No focus sessions this week.</p>
+                  <p className="py-6 text-center text-sm text-muted">{m.insights.noFocus}</p>
                 )}
               </div>
             </Card>
             <Card>
-              <CardHeader title="Habits this week" />
+              <CardHeader title={m.insights.habitsWeek} />
               <div className="px-5 pb-5 pt-3">
                 {data.habitRows.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted">No active habits.</p>
+                  <p className="py-6 text-center text-sm text-muted">{m.insights.noHabits}</p>
                 ) : (
                   <ul className="flex flex-col gap-3.5">
                     {data.habitRows.map(({ habit, count, streak }) => {
@@ -217,7 +220,7 @@ export function Insights() {
                             aria-valuemin={0}
                             aria-valuemax={habit.targetPerWeek}
                             aria-valuenow={count}
-                            aria-label={`${habit.name}: ${count} of ${habit.targetPerWeek} this week`}
+                            aria-label={f(m.insights.habitMeter, { name: habit.name, count, target: habit.targetPerWeek })}
                           >
                             <div
                               className="h-full rounded-[4px] bg-brand-500 transition-[width] duration-500 ease-[var(--ease-out-soft)] dark:bg-brand-400"

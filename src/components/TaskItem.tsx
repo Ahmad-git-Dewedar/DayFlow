@@ -6,6 +6,7 @@ import { formatDuration, formatTime, minutesToTime, relativeDayLabel, timeToMinu
 import { IconCheck, IconFlag, IconFocus, IconNote, IconTrash } from "./icons";
 import { IconButton } from "./Button";
 import { ProjectDot } from "./ui";
+import { useI18n } from "../i18n/context";
 
 type Props = {
   task: Task;
@@ -39,6 +40,7 @@ export function Checkbox({ checked, onChange, label }: { checked: boolean; onCha
 
 export const TaskItem = memo(function TaskItem({ task, project, showDate, onToggle, onEdit, onDelete }: Props) {
   const navigate = useNavigate();
+  const { m, f } = useI18n();
   const overdue = !task.done && task.date !== null && task.date < todayKey();
   const timeRange = task.start
     ? `${formatTime(task.start)} – ${formatTime(minutesToTime(timeToMinutes(task.start) + task.duration))}`
@@ -50,15 +52,15 @@ export const TaskItem = memo(function TaskItem({ task, project, showDate, onTogg
         <Checkbox
           checked={task.done}
           onChange={() => onToggle(task.id)}
-          label={task.done ? `Mark “${task.title}” as not done` : `Complete “${task.title}”`}
+          label={f(task.done ? m.task.uncomplete : m.task.complete, { title: task.title })}
         />
       </div>
 
       <button
         type="button"
         onClick={() => onEdit(task)}
-        className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-md text-left"
-        aria-label={`Edit “${task.title}”`}
+        className="flex min-w-0 flex-1 flex-col items-start gap-1 rounded-md text-start"
+        aria-label={f(m.task.edit, { title: task.title })}
       >
         <span
           className={cx(
@@ -67,14 +69,14 @@ export const TaskItem = memo(function TaskItem({ task, project, showDate, onTogg
           )}
         >
           {task.priority === "high" && !task.done && (
-            <IconFlag width={14} height={14} className="mr-1.5 inline -translate-y-px text-[#e5484d]" aria-label="High priority" />
+            <IconFlag width={14} height={14} className="me-1.5 inline -translate-y-px text-[#e5484d]" aria-label={m.task.highPriority} />
           )}
           {task.title}
         </span>
         <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
           {showDate && task.date && (
             <span className={cx(overdue && "font-medium text-[#e5484d]")}>
-              {overdue ? `Overdue · ${relativeDayLabel(task.date)}` : relativeDayLabel(task.date)}
+              {overdue ? f(m.task.overdueOn, { day: relativeDayLabel(task.date) }) : relativeDayLabel(task.date)}
             </span>
           )}
           {timeRange ? <span className="tabular-nums">{timeRange}</span> : <span>{formatDuration(task.duration)}</span>}
@@ -84,17 +86,17 @@ export const TaskItem = memo(function TaskItem({ task, project, showDate, onTogg
               {project.name}
             </span>
           )}
-          {task.notes && <IconNote width={14} height={14} aria-label="Has notes" />}
+          {task.notes && <IconNote width={14} height={14} aria-label={m.task.hasNotes} />}
         </span>
       </button>
 
       <div className="flex items-center gap-0.5 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100">
         {!task.done && (
-          <IconButton label={`Focus on “${task.title}”`} size="sm" onClick={() => navigate(`/focus?task=${task.id}`)}>
+          <IconButton label={f(m.task.focus, { title: task.title })} size="sm" onClick={() => navigate(`/focus?task=${task.id}`)}>
             <IconFocus width={17} height={17} />
           </IconButton>
         )}
-        <IconButton label={`Delete “${task.title}”`} size="sm" onClick={() => onDelete(task)}>
+        <IconButton label={f(m.task.delete, { title: task.title })} size="sm" onClick={() => onDelete(task)}>
           <IconTrash width={17} height={17} />
         </IconButton>
       </div>

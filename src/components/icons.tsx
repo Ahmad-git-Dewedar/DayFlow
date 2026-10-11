@@ -114,3 +114,9 @@ export const IconArrowLeft = (p: P) => (
 export const IconArrowRight = (p: P) => (
   <svg {...base} {...p}><path d="M5 12h14M13 6l6 6-6 6" /></svg>
 );
+export const IconUser = (p: P) => (
+  <svg {...base} {...p}><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+);
+export const IconShield = (p: P) => (
+  <svg {...base} {...p}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></svg>
+);

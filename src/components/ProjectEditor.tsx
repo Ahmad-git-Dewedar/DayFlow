@@ -5,7 +5,8 @@ import { Field } from "./ui";
 import { IconCheck } from "./icons";
 import { useActions, useAppState } from "../lib/store/context";
 import { PROJECT_COLORS, type Project, type ProjectColor } from "../lib/store/types";
-import { PROJECT_COLOR_LABELS, projectDot } from "../lib/projectColors";
+import { projectDot } from "../lib/projectColors";
+import { useI18n } from "../i18n/context";
 import { useToast } from "../lib/toast";
 import { cx } from "../lib/utils";
 
@@ -21,6 +22,7 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
   const { projects, tasks } = useAppState();
   const actions = useActions();
   const toast = useToast();
+  const { m, f, p } = useI18n();
   const formId = useId();
   const [name, setName] = useState(project?.name ?? "");
   const [color, setColor] = useState<ProjectColor>(
@@ -33,9 +35,9 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
   function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) return setError("Give the project a name.");
+    if (!trimmed) return setError(m.project.nameError);
     const clash = projects.some((p) => p.id !== project?.id && p.name.toLowerCase() === trimmed.toLowerCase());
-    if (clash) return setError("You already have a project with that name.");
+    if (clash) return setError(m.project.clash);
     if (project) actions.updateProject(project.id, { name: trimmed, color });
     else onCreated?.(actions.addProject(trimmed, color));
     onClose();
@@ -43,14 +45,14 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <Field label="Name" htmlFor={`${formId}-name`} error={error ?? undefined}>
+      <Field label={m.project.name} htmlFor={`${formId}-name`} error={error ?? undefined}>
         <input
           id={`${formId}-name`}
           className="field"
           data-autofocus
           maxLength={60}
           value={name}
-          placeholder="e.g. Work, Health, Side project"
+          placeholder={m.project.placeholder}
           aria-invalid={!!error}
           aria-describedby={error ? `${formId}-name-error` : undefined}
           onChange={(e) => {
@@ -61,10 +63,10 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
       </Field>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1.5 text-sm font-medium text-ink">Color</legend>
+        <legend className="mb-1.5 text-sm font-medium text-ink">{m.project.color}</legend>
         <div className="flex flex-wrap gap-2.5">
           {PROJECT_COLORS.map((c) => (
-            <label key={c} className="relative cursor-pointer" title={PROJECT_COLOR_LABELS[c]}>
+            <label key={c} className="relative cursor-pointer" title={m.project.colors[c]}>
               <input
                 type="radio"
                 name={`${formId}-color`}
@@ -72,7 +74,7 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
                 checked={color === c}
                 onChange={() => setColor(c)}
                 className="peer sr-only"
-                aria-label={PROJECT_COLOR_LABELS[c]}
+                aria-label={m.project.colors[c]}
               />
               <span
                 className={cx(
@@ -97,15 +99,15 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
                 size="sm"
                 onClick={() => {
                   actions.deleteProject(project.id);
-                  toast.show({ message: `Deleted project “${project.name}”` });
+                  toast.show({ message: f(m.project.deleted, { name: project.name }) });
                   onDeleted?.();
                   onClose();
                 }}
               >
-                Delete project
+                {m.project.deleteConfirm}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>
-                Keep
+                {m.common.keep}
               </Button>
             </div>
           ) : (
@@ -113,7 +115,7 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
               variant="danger-ghost"
               onClick={() => setConfirmDelete(true)}
             >
-              Delete
+              {m.common.delete}
             </Button>
           )
         ) : (
@@ -121,16 +123,16 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
         )}
         <div className="flex gap-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {m.common.cancel}
           </Button>
-          <Button type="submit">{project ? "Save" : "Create project"}</Button>
+          <Button type="submit">{project ? m.common.save : m.project.create}</Button>
         </div>
       </div>
       {confirmDelete && (
         <p className="-mt-2 pb-2 text-xs text-ink-soft">
           {taskCount > 0
-            ? `Its ${taskCount} task${taskCount === 1 ? "" : "s"} will be kept without a project.`
-            : "This project has no tasks."}
+            ? p(m.project.keepsTasks, taskCount)
+            : m.project.noTasks}
         </p>
       )}
     </form>
@@ -138,8 +140,9 @@ function ProjectForm({ project, onClose, onCreated, onDeleted }: Omit<Props, "op
 }
 
 export function ProjectEditor({ open, onClose, project, onCreated, onDeleted }: Props) {
+  const { m } = useI18n();
   return (
-    <Modal open={open} onClose={onClose} title={project ? "Edit project" : "New project"}>
+    <Modal open={open} onClose={onClose} title={project ? m.project.editTitle : m.project.newTitle}>
       {open && (
         <ProjectForm key={project?.id ?? "new"} project={project} onClose={onClose} onCreated={onCreated} onDeleted={onDeleted} />
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { IconButton } from "./Button";
 import { IconClose } from "./icons";
+import { useI18n } from "../i18n/context";
 
 type ModalProps = {
   open: boolean;
@@ -16,6 +17,7 @@ type ModalProps = {
  * trapping, Esc-to-close, an inert background and focus restoration.
  */
 export function Modal({ open, onClose, title, description, children, footer }: ModalProps) {
+  const { m } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -61,7 +63,7 @@ export function Modal({ open, onClose, title, description, children, footer }: M
               </p>
             )}
           </div>
-          <IconButton label="Close" size="sm" onClick={onClose} className="-mr-2">
+          <IconButton label={m.common.close} size="sm" onClick={onClose} className="-me-2">
             <IconClose width={18} height={18} />
           </IconButton>
         </div>

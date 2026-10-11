@@ -39,12 +39,23 @@ describe("normalizeState", () => {
       onboarded: false,
       profile: null,
       todayView: "list",
+      name: "",
+      language: "en",
     });
   });
 
   it("round-trips real data unchanged, including through JSON", () => {
     const sample = sampleState("2026-10-11");
     expect(normalizeState(JSON.parse(JSON.stringify(sample)))).toEqual(sample);
+  });
+
+  it("keeps the local account (name, language) and rejects bad values", () => {
+    expect(normalizeState({ settings: { name: "  Sara  ", language: "ar", onboarded: true } }).settings).toMatchObject({
+      name: "Sara",
+      language: "ar",
+      onboarded: true,
+    });
+    expect(normalizeState({ settings: { name: 42, language: "fr" } }).settings).toMatchObject({ name: "", language: "en" });
   });
 
   it("recognizes exports", () => {

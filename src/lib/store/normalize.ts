@@ -125,6 +125,8 @@ function normSettings(v: unknown): Settings {
     onboarded: s.onboarded === true,
     profile: PROFILE_IDS.includes(s.profile as ProfileId) ? (s.profile as ProfileId) : null,
     todayView: s.todayView === "timeline" ? "timeline" : "list",
+    name: str(s.name).trim().slice(0, 60),
+    language: s.language === "ar" ? "ar" : "en",
   };
 }
 

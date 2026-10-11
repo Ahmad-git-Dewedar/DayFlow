@@ -3,20 +3,27 @@ import { reducer } from "./reducer";
 import { normalizeState } from "./normalize";
 import { emptyState, type State } from "./types";
 import { DispatchContext, StateContext } from "./context";
+import { detectLanguage } from "../../i18n/core";
 
 export const STORAGE_KEY = "dayflow-data";
 
 type LoadResult = { state: State; error: boolean };
 
+/** A brand-new account starts in the browser's language (Arabic or English). */
+function freshState(): State {
+  const s = emptyState();
+  return { ...s, settings: { ...s.settings, language: detectLanguage() } };
+}
+
 function load(): LoadResult {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return { state: emptyState(), error: false };
+    if (raw === null) return { state: freshState(), error: false };
     return { state: normalizeState(JSON.parse(raw)), error: false };
   } catch {
     // Unreadable storage (blocked, or corrupted JSON): start clean but don't
     // overwrite whatever is there until the user changes something.
-    return { state: emptyState(), error: true };
+    return { state: freshState(), error: true };
   }
 }
 

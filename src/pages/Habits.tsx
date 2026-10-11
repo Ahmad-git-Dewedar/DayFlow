@@ -11,12 +11,13 @@ import { Card, EmptyState, Field, PageHeader } from "../components/ui";
 import { Modal } from "../components/Modal";
 import { IconArchive, IconCheck, IconChevronLeft, IconChevronRight, IconEdit, IconFlame, IconPlus, IconRepeat, IconTrash } from "../components/icons";
 import { cx } from "../lib/utils";
+import { useI18n } from "../i18n/context";
 
-const SUGGESTIONS = ["Read 20 minutes", "Drink water", "Exercise", "Meditate", "Journal", "No phone after 10pm"];
 
 function HabitForm({ habit, onClose }: { habit: Habit | null; onClose: () => void }) {
   const actions = useActions();
   const toast = useToast();
+  const { m, f, p } = useI18n();
   const id = useId();
   const [name, setName] = useState(habit?.name ?? "");
   const [target, setTarget] = useState(habit?.targetPerWeek ?? 7);
@@ -25,25 +26,25 @@ function HabitForm({ habit, onClose }: { habit: Habit | null; onClose: () => voi
   function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
-    if (!trimmed) return setError("Name your habit.");
+    if (!trimmed) return setError(m.habits.error);
     if (habit) actions.updateHabit(habit.id, { name: trimmed, targetPerWeek: target });
     else {
       actions.addHabit(trimmed, target);
-      toast.show({ message: `Started “${trimmed}”`, tone: "success" });
+      toast.show({ message: f(m.habits.started, { name: trimmed }), tone: "success" });
     }
     onClose();
   }
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <Field label="Habit" htmlFor={`${id}-name`} error={error ?? undefined}>
+      <Field label={m.habits.habit} htmlFor={`${id}-name`} error={error ?? undefined}>
         <input
           id={`${id}-name`}
           className="field"
           data-autofocus
           maxLength={80}
           value={name}
-          placeholder="e.g. Read 20 minutes"
+          placeholder={m.habits.placeholder}
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-name-error` : undefined}
           onChange={(e) => {
@@ -54,7 +55,7 @@ function HabitForm({ habit, onClose }: { habit: Habit | null; onClose: () => voi
       </Field>
       {!habit && (
         <div className="flex flex-wrap gap-1.5">
-          {SUGGESTIONS.map((s) => (
+          {m.habits.suggestions.map((s) => (
             <button
               key={s}
               type="button"
@@ -69,7 +70,7 @@ function HabitForm({ habit, onClose }: { habit: Habit | null; onClose: () => voi
           ))}
         </div>
       )}
-      <Field label="Weekly target" htmlFor={`${id}-target`} hint={target === 7 ? "Every day" : `${target} day${target === 1 ? "" : "s"} a week`}>
+      <Field label={m.habits.target} htmlFor={`${id}-target`} hint={target === 7 ? m.habits.everyDay : p(m.habits.perWeek, target)}>
         <div className="flex items-center gap-3">
           <input
             id={`${id}-target`}
@@ -80,14 +81,14 @@ function HabitForm({ habit, onClose }: { habit: Habit | null; onClose: () => voi
             onChange={(e) => setTarget(Number(e.target.value))}
             className="flex-1 accent-[var(--color-brand-500)]"
           />
-          <span className="w-10 text-right font-semibold tabular-nums text-ink">{target}/7</span>
+          <span className="w-10 text-end font-semibold tabular-nums text-ink">{target}/7</span>
         </div>
       </Field>
       <div className="flex justify-end gap-2 pb-2 pt-1">
         <Button variant="secondary" onClick={onClose}>
-          Cancel
+          {m.common.cancel}
         </Button>
-        <Button type="submit">{habit ? "Save" : "Add habit"}</Button>
+        <Button type="submit">{habit ? m.common.save : m.habits.addHabit}</Button>
       </div>
     </form>
   );
@@ -96,26 +97,27 @@ function HabitForm({ habit, onClose }: { habit: Habit | null; onClose: () => voi
 function HabitMenu({ habit, onEdit }: { habit: Habit; onEdit: (h: Habit) => void }) {
   const actions = useActions();
   const toast = useToast();
+  const { m, f } = useI18n();
   const deleteHabit = useDeleteHabit();
   return (
     <>
-      <IconButton label={`Edit ${habit.name}`} size="sm" onClick={() => onEdit(habit)}>
+      <IconButton label={f(m.habits.edit, { name: habit.name })} size="sm" onClick={() => onEdit(habit)}>
         <IconEdit width={17} height={17} />
       </IconButton>
       <IconButton
-        label={`Archive ${habit.name}`}
+        label={f(m.habits.archive, { name: habit.name })}
         size="sm"
         onClick={() => {
           actions.updateHabit(habit.id, { archived: true });
           toast.show({
-            message: `Archived “${habit.name}”`,
-            action: { label: "Undo", onClick: () => actions.updateHabit(habit.id, { archived: false }) },
+            message: f(m.habits.archived, { name: habit.name }),
+            action: { label: m.common.undo, onClick: () => actions.updateHabit(habit.id, { archived: false }) },
           });
         }}
       >
         <IconArchive width={17} height={17} />
       </IconButton>
-      <IconButton label={`Delete ${habit.name}`} size="sm" onClick={() => deleteHabit(habit)}>
+      <IconButton label={f(m.habits.delete, { name: habit.name })} size="sm" onClick={() => deleteHabit(habit)}>
         <IconTrash width={17} height={17} />
       </IconButton>
     </>
@@ -123,6 +125,7 @@ function HabitMenu({ habit, onEdit }: { habit: Habit; onEdit: (h: Habit) => void
 }
 
 function HabitRow({ habit, days, onEdit }: { habit: Habit; days: string[]; onEdit: (h: Habit) => void }) {
+  const { m, f, p } = useI18n();
   const { settings } = useAppState();
   const actions = useActions();
   const today = todayKey();
@@ -139,11 +142,12 @@ function HabitRow({ habit, days, onEdit }: { habit: Habit; days: string[]; onEdi
           <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             <span className={cx("inline-flex items-center gap-1", streak > 0 && "font-medium text-[#d9730d]")}>
               <IconFlame width={14} height={14} />
-              {streak} day streak
+              {p(m.habits.streak, streak)}
             </span>
-            <span>Best {best}</span>
+            <span>{f(m.habits.best, { n: best })}</span>
             <span className={cx(hit && "font-medium text-brand-600 dark:text-brand-400")}>
-              {thisWeek}/{habit.targetPerWeek} this week{hit ? " ✓" : ""}
+              {f(m.habits.week, { count: thisWeek, target: habit.targetPerWeek })}
+              {hit ? " ✓" : ""}
             </span>
           </p>
         </div>
@@ -162,7 +166,7 @@ function HabitRow({ habit, days, onEdit }: { habit: Habit; days: string[]; onEdi
               type="button"
               disabled={future}
               aria-pressed={done}
-              aria-label={`${habit.name}, ${relativeDayLabel(d, today)} (${formatDayShort(d)}): ${done ? "done" : "not done"}`}
+              aria-label={f(m.habits.day, { name: habit.name, day: relativeDayLabel(d, today), date: formatDayShort(d), state: done ? m.habits.done : m.habits.notDone })}
               onClick={() => actions.toggleHabitDay(habit.id, d)}
               className={cx(
                 "flex aspect-square max-h-11 w-full items-center justify-center rounded-lg border text-xs transition-colors",
@@ -189,7 +193,8 @@ function HabitRow({ habit, days, onEdit }: { habit: Habit; days: string[]; onEdi
 }
 
 export function Habits() {
-  usePageTitle("Habits");
+  const { m, f, p } = useI18n();
+  usePageTitle(m.habits.title);
   const { habits, settings } = useAppState();
   const actions = useActions();
   const deleteHabit = useDeleteHabit();
@@ -206,11 +211,11 @@ export function Habits() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Habits"
-        subtitle={active.length ? `${doneToday} of ${active.length} done today` : "Small things, every day."}
+        title={m.habits.title}
+        subtitle={active.length ? f(m.habits.doneToday, { done: doneToday, total: active.length }) : m.habits.tagline}
         actions={
           <Button size="sm" onClick={() => setEditor({ habit: null })}>
-            <IconPlus width={17} height={17} /> New habit
+            <IconPlus width={17} height={17} /> {m.habits.new}
           </Button>
         }
       />
@@ -219,28 +224,28 @@ export function Habits() {
         {active.length === 0 ? (
           <EmptyState
             icon={<IconRepeat width={22} height={22} />}
-            title="Build your first habit"
-            action={<Button onClick={() => setEditor({ habit: null })}>Add a habit</Button>}
+            title={m.habits.emptyTitle}
+            action={<Button onClick={() => setEditor({ habit: null })}>{m.habits.add}</Button>}
           >
-            Check it off each day to grow a streak. Set a weekly target for habits you don't need every day.
+            {m.habits.emptyBody}
           </EmptyState>
         ) : (
           <>
             <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
               <p className="text-sm font-medium text-ink">
-                {weekOffset === 0 ? "This week" : weekOffset === -1 ? "Last week" : `${formatDayShort(days[0])} – ${formatDayShort(days[6])}`}
+                {weekOffset === 0 ? m.habits.thisWeek : weekOffset === -1 ? m.habits.lastWeek : `${formatDayShort(days[0])} – ${formatDayShort(days[6])}`}
               </p>
               <div className="flex items-center gap-1">
                 {weekOffset !== 0 && (
                   <Button variant="ghost" size="sm" onClick={() => setWeekOffset(0)}>
-                    This week
+                    {m.habits.thisWeek}
                   </Button>
                 )}
-                <IconButton label="Previous week" size="sm" onClick={() => setWeekOffset((w) => w - 1)}>
-                  <IconChevronLeft width={18} height={18} />
+                <IconButton label={m.habits.prevWeek} size="sm" onClick={() => setWeekOffset((w) => w - 1)}>
+                  <IconChevronLeft width={18} height={18} className="rtl:-scale-x-100" />
                 </IconButton>
-                <IconButton label="Next week" size="sm" disabled={weekOffset >= 0} onClick={() => setWeekOffset((w) => w + 1)}>
-                  <IconChevronRight width={18} height={18} />
+                <IconButton label={m.habits.nextWeek} size="sm" disabled={weekOffset >= 0} onClick={() => setWeekOffset((w) => w + 1)}>
+                  <IconChevronRight width={18} height={18} className="rtl:-scale-x-100" />
                 </IconButton>
               </div>
             </div>
@@ -275,8 +280,8 @@ export function Habits() {
       {archived.length > 0 && (
         <details className="group/arch">
           <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink-soft hover:text-ink [&::-webkit-details-marker]:hidden">
-            <IconChevronRight width={15} height={15} className="transition-transform group-open/arch:rotate-90" />
-            Archived habits · {archived.length}
+            <IconChevronRight width={15} height={15} className="transition-transform rtl:-scale-x-100 ltr:group-open/arch:rotate-90 rtl:group-open/arch:-rotate-90" />
+            {f(m.habits.archivedList, { n: archived.length })}
           </summary>
           <Card className="mt-3">
             <ul>
@@ -284,13 +289,13 @@ export function Habits() {
                 <li key={h.id} className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 last:border-0">
                   <div>
                     <p className="text-ink">{h.name}</p>
-                    <p className="text-xs text-muted">Best streak {longestStreak(h)} · {Object.keys(h.log).length} check-ins</p>
+                    <p className="text-xs text-muted">{p(m.habits.archivedStats, Object.keys(h.log).length, { best: longestStreak(h) })}</p>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="secondary" size="sm" onClick={() => actions.updateHabit(h.id, { archived: false })}>
-                      Restore
+                      {m.habits.restore}
                     </Button>
-                    <IconButton label={`Delete ${h.name}`} size="sm" onClick={() => deleteHabit(h)}>
+                    <IconButton label={f(m.habits.delete, { name: h.name })} size="sm" onClick={() => deleteHabit(h)}>
                       <IconTrash width={17} height={17} />
                     </IconButton>
                   </div>
@@ -301,7 +306,7 @@ export function Habits() {
         </details>
       )}
 
-      <Modal open={editor !== null} onClose={() => setEditor(null)} title={editor?.habit ? "Edit habit" : "New habit"}>
+      <Modal open={editor !== null} onClose={() => setEditor(null)} title={editor?.habit ? m.habits.formEdit : m.habits.formNew}>
         {editor && <HabitForm key={editor.habit?.id ?? "new"} habit={editor.habit} onClose={() => setEditor(null)} />}
       </Modal>
     </div>

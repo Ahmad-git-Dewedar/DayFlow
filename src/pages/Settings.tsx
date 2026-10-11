@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { useActions, useAppState } from "../lib/store/context";
 import { looksLikeExport, normalizeState } from "../lib/store/normalize";
 import { sampleState } from "../lib/store/sample";
@@ -7,19 +7,21 @@ import { formatDuration, todayKey } from "../lib/dates";
 import { useTheme, type ThemePref } from "../lib/theme";
 import { useToast } from "../lib/toast";
 import { usePageTitle } from "../lib/usePageTitle";
-import { PROFILES } from "../lib/onboarding";
+import { isPersisted, requestPersistence } from "../lib/persist";
+import { useI18n } from "../i18n/context";
+import type { Lang } from "../i18n/core";
 import { Button, ButtonLink } from "../components/Button";
 import { Card, PageHeader, Segmented } from "../components/ui";
 import { Modal } from "../components/Modal";
-import { IconDownload, IconMonitor, IconMoon, IconSparkle, IconSun, IconTrash, IconUpload } from "../components/icons";
+import { IconDownload, IconMonitor, IconMoon, IconShield, IconSparkle, IconSun, IconTrash, IconUpload } from "../components/icons";
 
 const GOALS = [30, 60, 90, 120, 180, 240, 300, 360];
 const LENGTHS = [15, 25, 30, 45, 50, 60, 90];
 
-function Row({ title, description, control, htmlFor }: { title: string; description?: ReactNode; control: ReactNode; htmlFor?: string }) {
+function Row({ title, description, control, htmlFor }: { title: ReactNode; description?: ReactNode; control?: ReactNode; htmlFor?: string }) {
   return (
     <div className="flex flex-col gap-3 border-b border-line px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      <div className="flex flex-col gap-0.5">
+      <div className="flex min-w-0 flex-col gap-0.5">
         {htmlFor ? (
           <label htmlFor={htmlFor} className="font-medium text-ink">
             {title}
@@ -29,7 +31,7 @@ function Row({ title, description, control, htmlFor }: { title: string; descript
         )}
         {description && <span className="text-sm text-ink-soft">{description}</span>}
       </div>
-      <div className="shrink-0">{control}</div>
+      {control && <div className="shrink-0">{control}</div>}
     </div>
   );
 }
@@ -43,10 +45,39 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-type Pending = { kind: "import"; state: State; summary: string } | { kind: "sample" } | { kind: "reset" } | null;
+/** Edits the account name locally and saves on blur or Enter (not on every keystroke). */
+function NameField({ id }: { id: string }) {
+  const { settings } = useAppState();
+  const actions = useActions();
+  const { m } = useI18n();
+  const [draft, setDraft] = useState(settings.name);
+  useEffect(() => setDraft(settings.name), [settings.name]);
+  const save = () => {
+    const next = draft.trim().slice(0, 60);
+    if (next !== settings.name) actions.updateSettings({ name: next });
+  };
+  return (
+    <input
+      id={id}
+      className="field w-full sm:w-56"
+      value={draft}
+      maxLength={60}
+      autoComplete="given-name"
+      placeholder={m.settings.namePlaceholder}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+      }}
+    />
+  );
+}
+
+type Pending = { kind: "import"; state: State } | { kind: "sample" } | { kind: "reset" } | null;
 
 export function Settings() {
-  usePageTitle("Settings");
+  const { m, f, lang, setLang } = useI18n();
+  usePageTitle(m.settings.title);
   const state = useAppState();
   const { settings, tasks, habits, sessions, projects } = state;
   const actions = useActions();
@@ -55,10 +86,21 @@ export function Settings() {
   const fileRef = useRef<HTMLInputElement>(null);
   const id = useId();
   const [pending, setPending] = useState<Pending>(null);
+  const [persisted, setPersisted] = useState<boolean | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     typeof Notification === "undefined" ? "unsupported" : Notification.permission,
   );
   const hasData = tasks.length + habits.length + sessions.length + projects.length > 0;
+  const profile = settings.profile ? m.welcome.profiles[settings.profile] : null;
+
+  useEffect(() => {
+    let alive = true;
+    // Ask once more here (harmless if already granted), then show the real status.
+    requestPersistence().then(() => isPersisted()).then((p) => alive && setPersisted(p));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   function exportData() {
     const blob = new Blob([JSON.stringify({ app: "DayFlow", exportedAt: new Date().toISOString(), ...state }, null, 2)], {
@@ -70,7 +112,7 @@ export function Settings() {
     a.download = `dayflow-backup-${todayKey()}.json`;
     a.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast.show({ message: "Backup downloaded", tone: "success" });
+    toast.show({ message: m.settings.exported, tone: "success" });
   }
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
@@ -78,17 +120,15 @@ export function Settings() {
     e.target.value = "";
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) {
-      toast.show({ message: "That file is too large to be a DayFlow backup." });
+      toast.show({ message: m.settings.importTooLarge });
       return;
     }
     try {
       const raw: unknown = JSON.parse(await file.text());
       if (!looksLikeExport(raw)) throw new Error("not an export");
-      const next = normalizeState(raw);
-      const summary = `${next.tasks.length} tasks, ${next.habits.length} habits, ${next.projects.length} projects and ${next.sessions.length} focus sessions`;
-      setPending({ kind: "import", state: next, summary });
+      setPending({ kind: "import", state: normalizeState(raw) });
     } catch {
-      toast.show({ message: "Couldn't read that file. Choose a DayFlow backup (.json)." });
+      toast.show({ message: m.settings.importInvalid });
     }
   }
 
@@ -101,73 +141,119 @@ export function Settings() {
     const result = permission === "granted" ? "granted" : await Notification.requestPermission();
     setPermission(result);
     if (result === "granted") actions.updateSettings({ notifications: true });
-    else toast.show({ message: "Notifications are blocked in your browser settings." });
+    else toast.show({ message: m.settings.notificationsBlockedToast });
+  }
+
+  function loadSample() {
+    actions.replaceData(sampleState(todayKey(), settings, m.sample));
+    toast.show({ message: m.settings.sampleLoaded, tone: "success" });
   }
 
   function confirm() {
     if (!pending) return;
     if (pending.kind === "import") {
-      actions.replaceData({ ...pending.state, activeFocus: null });
-      toast.show({ message: "Backup restored", tone: "success" });
+      // A restored account is never sent back through the welcome quiz.
+      actions.replaceData({ ...pending.state, activeFocus: null, settings: { ...pending.state.settings, onboarded: true } });
+      toast.show({ message: m.settings.restored, tone: "success" });
     } else if (pending.kind === "sample") {
-      actions.replaceData(sampleState(todayKey(), settings));
-      toast.show({ message: "Sample data loaded", tone: "success" });
+      loadSample();
     } else {
       actions.resetData();
-      toast.show({ message: "All data deleted" });
+      toast.show({ message: m.settings.resetDone });
     }
     setPending(null);
   }
 
-  const confirmCopy = {
-    import: { title: "Restore this backup?", cta: "Replace my data", danger: false },
-    sample: { title: "Load sample data?", cta: "Load sample data", danger: false },
-    reset: { title: "Delete all data?", cta: "Delete everything", danger: true },
-  } as const;
-  const copy = pending ? confirmCopy[pending.kind] : null;
+  const copy =
+    pending?.kind === "import"
+      ? {
+          title: m.settings.confirmImportTitle,
+          cta: m.settings.confirmImportCta,
+          body: f(m.settings.confirmImportBody, {
+            summary: f(m.settings.importSummary, {
+              tasks: pending.state.tasks.length,
+              habits: pending.state.habits.length,
+              projects: pending.state.projects.length,
+              sessions: pending.state.sessions.length,
+            }),
+          }),
+          danger: false,
+        }
+      : pending?.kind === "sample"
+        ? { title: m.settings.confirmSampleTitle, cta: m.settings.confirmSampleCta, body: m.settings.confirmSampleBody, danger: false }
+        : pending?.kind === "reset"
+          ? { title: m.settings.confirmResetTitle, cta: m.settings.confirmResetCta, body: m.settings.confirmResetBody, danger: true }
+          : null;
+
+  const kbd = "rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs";
 
   return (
     <div className="flex max-w-3xl flex-col gap-8">
-      <PageHeader title="Settings" subtitle="DayFlow stores everything locally in this browser — no account needed." />
+      <PageHeader title={m.settings.title} subtitle={m.settings.subtitle} />
 
-      <Section title="Your style">
+      <Section title={m.settings.account}>
+        <Row title={m.settings.name} description={m.settings.nameHint} htmlFor={`${id}-name`} control={<NameField id={`${id}-name`} />} />
         <Row
-          title={settings.profile ? PROFILES[settings.profile].name : "Not set yet"}
-          description={
-            settings.profile
-              ? PROFILES[settings.profile].tagline
-              : "Answer four quick questions and DayFlow will set itself up the way you work."
-          }
+          title={m.settings.language}
           control={
-            <ButtonLink to="/welcome" variant="secondary" size="sm">
-              {settings.profile ? "Retake quiz" : "Take the quiz"}
+            <Segmented<Lang>
+              label={m.settings.language}
+              value={lang}
+              onChange={setLang}
+              options={[
+                { value: "en", label: <span lang="en">English</span> },
+                { value: "ar", label: <span lang="ar">العربية</span> },
+              ]}
+            />
+          }
+        />
+        <Row
+          title={
+            <span className="inline-flex items-center gap-2">
+              <IconShield width={17} height={17} className="text-brand-600 dark:text-brand-400" />
+              {m.settings.storage}
+            </span>
+          }
+          description={persisted === null ? "…" : persisted ? m.settings.storageProtected : m.settings.storageBestEffort}
+        />
+        <Row
+          title={
+            <>
+              <span className="block text-sm font-normal text-ink-soft">{m.settings.style}</span>
+              {profile ? profile.name : m.settings.styleNotSet}
+            </>
+          }
+          description={profile ? profile.tagline : m.settings.styleNotSetBody}
+          control={
+            <ButtonLink to="/welcome?retake=1" variant="secondary" size="sm">
+              {profile ? m.settings.retake : m.settings.takeQuiz}
             </ButtonLink>
           }
         />
       </Section>
 
-      <Section title="Appearance">
+      <Section title={m.settings.appearance}>
         <Row
-          title="Theme"
+          title={m.settings.theme}
           control={
             <Segmented<ThemePref>
-              label="Theme"
+              label={m.settings.theme}
               value={pref}
               onChange={setPref}
               options={[
-                { value: "system", label: <><IconMonitor width={15} height={15} /> System</> },
-                { value: "light", label: <><IconSun width={15} height={15} /> Light</> },
-                { value: "dark", label: <><IconMoon width={15} height={15} /> Dark</> },
+                { value: "system", label: <><IconMonitor width={15} height={15} /> {m.settings.system}</> },
+                { value: "light", label: <><IconSun width={15} height={15} /> {m.settings.light}</> },
+                { value: "dark", label: <><IconMoon width={15} height={15} /> {m.settings.dark}</> },
               ]}
             />
           }
         />
       </Section>
 
-      <Section title="Planning">
+      <Section title={m.settings.planning}>
         <Row
-          title="Daily focus goal"
-          description="Shown on Today, Focus and Insights."
+          title={m.settings.goal}
+          description={m.settings.goalHint}
           htmlFor={`${id}-goal`}
           control={
             <select id={`${id}-goal`} className="field w-36" value={settings.dailyFocusGoal} onChange={(e) => actions.updateSettings({ dailyFocusGoal: Number(e.target.value) })}>
@@ -180,7 +266,7 @@ export function Settings() {
           }
         />
         <Row
-          title="Default focus length"
+          title={m.settings.defaultLength}
           htmlFor={`${id}-len`}
           control={
             <select id={`${id}-len`} className="field w-36" value={settings.focusLength} onChange={(e) => actions.updateSettings({ focusLength: Number(e.target.value) })}>
@@ -193,94 +279,102 @@ export function Settings() {
           }
         />
         <Row
-          title="Week starts on"
+          title={m.settings.weekStart}
           control={
             <Segmented<0 | 1>
-              label="Week starts on"
+              label={m.settings.weekStart}
               value={settings.weekStartsOn}
               onChange={(v) => actions.updateSettings({ weekStartsOn: v })}
               options={[
-                { value: 1, label: "Monday" },
-                { value: 0, label: "Sunday" },
+                { value: 1, label: m.settings.monday },
+                { value: 0, label: m.settings.sunday },
               ]}
             />
           }
         />
         <Row
-          title="Focus notifications"
+          title={m.settings.notifications}
           description={
             permission === "unsupported"
-              ? "Your browser doesn't support notifications."
+              ? m.settings.notificationsUnsupported
               : permission === "denied"
-                ? "Blocked in your browser settings."
-                : "Get a desktop notification when a session ends in a background tab."
+                ? m.settings.notificationsDenied
+                : m.settings.notificationsHint
           }
           control={
             <button
               type="button"
               role="switch"
               aria-checked={settings.notifications}
-              aria-label="Focus notifications"
+              aria-label={m.settings.notifications}
               disabled={permission === "unsupported" || (permission === "denied" && !settings.notifications)}
               onClick={toggleNotifications}
               className={`relative h-7 w-12 rounded-full border border-line transition-colors disabled:opacity-40 ${settings.notifications ? "bg-brand-500" : "bg-surface-3"}`}
             >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-[left] ${settings.notifications ? "left-[1.4rem]" : "left-0.5"}`} />
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-[inset-inline-start] ${settings.notifications ? "start-[1.4rem]" : "start-0.5"}`}
+              />
             </button>
           }
         />
       </Section>
 
-      <Section title="Your data">
+      <Section title={m.settings.data}>
         <Row
-          title="Export backup"
-          description="Download everything as a JSON file."
+          title={m.settings.export}
+          description={m.settings.exportHint}
           control={
             <Button variant="secondary" size="sm" onClick={exportData}>
-              <IconDownload width={16} height={16} /> Export
+              <IconDownload width={16} height={16} /> {m.settings.exportButton}
             </Button>
           }
         />
         <Row
-          title="Restore from backup"
-          description="Replaces your current data with a DayFlow export."
+          title={m.settings.import}
+          description={m.settings.importHint}
           control={
             <>
               <input ref={fileRef} type="file" accept="application/json,.json" className="sr-only" tabIndex={-1} aria-hidden onChange={onFile} />
               <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
-                <IconUpload width={16} height={16} /> Import
+                <IconUpload width={16} height={16} /> {m.settings.importButton}
               </Button>
             </>
           }
         />
         <Row
-          title="Sample data"
-          description="Fill DayFlow with an example week to explore every feature."
+          title={m.settings.sample}
+          description={m.settings.sampleHint}
           control={
-            <Button variant="secondary" size="sm" onClick={() => (hasData ? setPending({ kind: "sample" }) : confirmSample())}>
-              <IconSparkle width={16} height={16} /> Load sample
+            <Button variant="secondary" size="sm" onClick={() => (hasData ? setPending({ kind: "sample" }) : loadSample())}>
+              <IconSparkle width={16} height={16} /> {m.settings.sampleButton}
             </Button>
           }
         />
         <Row
-          title="Delete all data"
-          description="Permanently removes tasks, habits, projects and focus history from this browser."
+          title={m.settings.reset}
+          description={m.settings.resetHint}
           control={
             <Button variant="danger" size="sm" disabled={!hasData} onClick={() => setPending({ kind: "reset" })}>
-              <IconTrash width={16} height={16} /> Delete all
+              <IconTrash width={16} height={16} /> {m.settings.resetButton}
             </Button>
           }
         />
       </Section>
 
-      <Section title="Keyboard">
+      <Section title={m.settings.keyboard}>
         <dl className="grid gap-x-6 gap-y-2 px-5 py-4 text-sm sm:grid-cols-[auto_1fr]">
-          <dt><kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs">Alt</kbd> + <kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs">↑ / ↓</kbd></dt>
-          <dd className="text-ink-soft">Move a focused timeline block by 15 minutes</dd>
-          <dt><kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs">Alt</kbd> + <kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs">Shift</kbd> + <kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs">↑ / ↓</kbd></dt>
-          <dd className="text-ink-soft">Shorten or lengthen a focused timeline block</dd>
-          <dt><kbd className="rounded border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-xs">Esc</kbd></dt>
-          <dd className="text-ink-soft">Close any dialog</dd>
+          <dt dir="ltr" className="justify-self-start">
+            <kbd className={kbd}>Alt</kbd> + <kbd className={kbd}>↑ / ↓</kbd>
+          </dt>
+          <dd className="text-ink-soft">{m.settings.kbMove}</dd>
+          <dt dir="ltr" className="justify-self-start">
+            <kbd className={kbd}>Alt</kbd> + <kbd className={kbd}>Shift</kbd> + <kbd className={kbd}>↑ / ↓</kbd>
+          </dt>
+          <dd className="text-ink-soft">{m.settings.kbResize}</dd>
+          <dt dir="ltr" className="justify-self-start">
+            <kbd className={kbd}>Esc</kbd>
+          </dt>
+          <dd className="text-ink-soft">{m.settings.kbClose}</dd>
         </dl>
       </Section>
 
@@ -291,7 +385,7 @@ export function Settings() {
         footer={
           <>
             <Button variant="secondary" onClick={() => setPending(null)}>
-              Cancel
+              {m.common.cancel}
             </Button>
             <Button variant={copy?.danger ? "danger" : "primary"} onClick={confirm} data-autofocus>
               {copy?.cta}
@@ -299,17 +393,8 @@ export function Settings() {
           </>
         }
       >
-        <p className="text-sm text-ink-soft">
-          {pending?.kind === "import" && <>This backup contains {pending.summary}. It will replace everything currently in DayFlow. Consider exporting a backup first.</>}
-          {pending?.kind === "sample" && "Sample data replaces your current tasks, habits, projects and focus history. Export a backup first if you want to keep them."}
-          {pending?.kind === "reset" && "This permanently removes all tasks, habits, projects and focus history from this browser. It can't be undone — export a backup first if you might want it back."}
-        </p>
+        <p className="text-sm text-ink-soft">{copy?.body}</p>
       </Modal>
     </div>
   );
-
-  function confirmSample() {
-    actions.replaceData(sampleState(todayKey(), settings));
-    toast.show({ message: "Sample data loaded", tone: "success" });
-  }
 }

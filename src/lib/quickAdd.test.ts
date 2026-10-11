@@ -5,6 +5,7 @@ import type { Project } from "./store/types";
 const projects: Project[] = [
   { id: "w", name: "Work", color: "emerald", createdAt: 0 },
   { id: "s", name: "Side Project", color: "sky", createdAt: 0 },
+  { id: "a", name: "العمل", color: "amber", createdAt: 0 },
 ];
 
 describe("parseQuickAdd", () => {
@@ -47,6 +48,26 @@ describe("parseQuickAdd", () => {
       title: "Call at 3pm",
       start: null,
       duration: 15,
+      projectId: null,
+    });
+  });
+
+  it("understands Arabic times, lengths and projects", () => {
+    expect(parseQuickAdd("كتابة تقرير 2م 45د #عمل", projects)).toEqual({
+      title: "كتابة تقرير",
+      start: "14:00",
+      duration: 45,
+      projectId: "a",
+    });
+    expect(parseQuickAdd("اجتماع 9:30ص 1س30د", projects)).toMatchObject({ start: "09:30", duration: 90, title: "اجتماع" });
+    expect(parseQuickAdd("مراجعة 1.5س #العمل", projects)).toMatchObject({ duration: 90, projectId: "a" });
+  });
+
+  it("accepts Arabic-Indic digits but keeps them as typed in the title", () => {
+    expect(parseQuickAdd("قراءة ٢٠ صفحة ٧م ٣٠د", projects)).toEqual({
+      title: "قراءة ٢٠ صفحة",
+      start: "19:00",
+      duration: 30,
       projectId: null,
     });
   });

@@ -7,6 +7,7 @@ import type { Priority, Task } from "../lib/store/types";
 import { formatDuration, isDateKey, isTime } from "../lib/dates";
 import { useToast } from "../lib/toast";
 import { useDeleteTask } from "../lib/useDeleteTask";
+import { useI18n } from "../i18n/context";
 
 const DURATIONS = [15, 30, 45, 60, 90, 120, 180];
 
@@ -48,6 +49,7 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
   const actions = useActions();
   const toast = useToast();
   const deleteTask = useDeleteTask();
+  const { m } = useI18n();
   const formId = useId();
   const [draft, setDraft] = useState<Draft>(() => toDraft(task, defaults));
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,7 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
     e.preventDefault();
     const title = draft.title.trim();
     if (!title) {
-      setError("Give the task a name.");
+      setError(m.editor.nameError);
       return;
     }
     const date = isDateKey(draft.date) ? draft.date : null;
@@ -77,7 +79,7 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
       actions.updateTask(task.id, values);
     } else {
       actions.addTask(values);
-      toast.show({ message: date ? "Task added" : "Task added to Inbox", tone: "success" });
+      toast.show({ message: date ? m.task.added : m.task.addedInbox, tone: "success" });
     }
     onClose();
   }
@@ -86,14 +88,14 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
 
   return (
     <form id={formId} onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <Field label="Task" htmlFor={id("title")} error={error ?? undefined}>
+      <Field label={m.editor.task} htmlFor={id("title")} error={error ?? undefined}>
         <input
           id={id("title")}
           className="field"
           value={draft.title}
           data-autofocus
           maxLength={300}
-          placeholder="What needs doing?"
+          placeholder={m.editor.taskPlaceholder}
           aria-invalid={!!error}
           aria-describedby={error ? `${id("title")}-error` : undefined}
           onChange={(e) => {
@@ -104,10 +106,10 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Day" htmlFor={id("date")} hint={draft.date ? undefined : "Empty = Inbox"}>
+        <Field label={m.editor.day} htmlFor={id("date")} hint={draft.date ? undefined : m.editor.dayEmptyHint}>
           <input id={id("date")} type="date" className="field" value={draft.date} onChange={(e) => set("date", e.target.value)} />
         </Field>
-        <Field label="Start time" htmlFor={id("start")} hint={draft.date ? "Optional" : "Pick a day first"}>
+        <Field label={m.editor.start} htmlFor={id("start")} hint={draft.date ? m.common.optional : m.editor.pickDayFirst}>
           <input
             id={id("start")}
             type="time"
@@ -118,7 +120,7 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
             onChange={(e) => set("start", e.target.value)}
           />
         </Field>
-        <Field label="Duration" htmlFor={id("duration")}>
+        <Field label={m.editor.duration} htmlFor={id("duration")}>
           <select id={id("duration")} className="field" value={draft.duration} onChange={(e) => set("duration", Number(e.target.value))}>
             {durations.map((d) => (
               <option key={d} value={d}>
@@ -127,9 +129,9 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
             ))}
           </select>
         </Field>
-        <Field label="Project" htmlFor={id("project")}>
+        <Field label={m.editor.project} htmlFor={id("project")}>
           <select id={id("project")} className="field" value={draft.projectId} onChange={(e) => set("projectId", e.target.value)}>
-            <option value="">No project</option>
+            <option value="">{m.common.noProject}</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -140,27 +142,27 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-ink">Priority</span>
+        <span className="text-sm font-medium text-ink">{m.editor.priority}</span>
         <Segmented<Priority>
-          label="Priority"
+          label={m.editor.priority}
           value={draft.priority}
           onChange={(v) => set("priority", v)}
           options={[
-            { value: "low", label: "Low" },
-            { value: "normal", label: "Normal" },
-            { value: "high", label: "High" },
+            { value: "low", label: m.editor.low },
+            { value: "normal", label: m.editor.normal },
+            { value: "high", label: m.editor.high },
           ]}
         />
       </div>
 
-      <Field label="Notes" htmlFor={id("notes")}>
+      <Field label={m.editor.notes} htmlFor={id("notes")}>
         <textarea
           id={id("notes")}
           className="field min-h-20 resize-y"
           rows={3}
           maxLength={5000}
           value={draft.notes}
-          placeholder="Details, links, next steps…"
+          placeholder={m.editor.notesPlaceholder}
           onChange={(e) => set("notes", e.target.value)}
         />
       </Field>
@@ -174,16 +176,16 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
               onClose();
             }}
           >
-            Delete
+            {m.common.delete}
           </Button>
         ) : (
           <span />
         )}
         <div className="flex gap-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancel
+            {m.common.cancel}
           </Button>
-          <Button type="submit">{task ? "Save" : "Add task"}</Button>
+          <Button type="submit">{task ? m.common.save : m.editor.add}</Button>
         </div>
       </div>
     </form>
@@ -191,8 +193,9 @@ function TaskForm({ task, defaults, onClose }: Omit<Props, "open">) {
 }
 
 export function TaskEditor({ open, onClose, task, defaults }: Props) {
+  const { m } = useI18n();
   return (
-    <Modal open={open} onClose={onClose} title={task ? "Edit task" : "New task"}>
+    <Modal open={open} onClose={onClose} title={task ? m.editor.editTitle : m.editor.newTitle}>
       {open && <TaskForm key={task?.id ?? "new"} task={task} defaults={defaults} onClose={onClose} />}
     </Modal>
   );

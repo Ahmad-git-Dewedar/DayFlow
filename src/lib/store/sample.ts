@@ -1,6 +1,8 @@
 import { addDays, fromKey, todayKey, type DateKey } from "../dates";
 import { newId } from "../id";
 import { DEFAULT_SETTINGS, type FocusSession, type Habit, type Project, type State, type Task } from "./types";
+import { en, type Messages } from "../../i18n/en";
+import { interpolate } from "../../i18n/core";
 
 /** Small seeded PRNG so the sample history looks organic but stays stable. */
 function rng(seed: number) {
@@ -11,13 +13,14 @@ function rng(seed: number) {
 }
 
 /** A realistic starter workspace anchored to `today`, for trying DayFlow out. */
-export function sampleState(today: DateKey = todayKey(), settings = DEFAULT_SETTINGS): State {
+export function sampleState(today: DateKey = todayKey(), settings = DEFAULT_SETTINGS, text: Messages["sample"] = en.sample): State {
+  const t = text.tasks;
   const now = Date.now();
   const rand = rng(42);
 
-  const work: Project = { id: newId(), name: "Work", color: "emerald", createdAt: now };
-  const personal: Project = { id: newId(), name: "Personal", color: "sky", createdAt: now };
-  const learning: Project = { id: newId(), name: "Learning", color: "amber", createdAt: now };
+  const work: Project = { id: newId(), name: text.projects.work, color: "emerald", createdAt: now };
+  const personal: Project = { id: newId(), name: text.projects.personal, color: "sky", createdAt: now };
+  const learning: Project = { id: newId(), name: text.projects.learning, color: "amber", createdAt: now };
 
   const task = (p: Partial<Task> & Pick<Task, "title">): Task => ({
     id: newId(),
@@ -35,18 +38,18 @@ export function sampleState(today: DateKey = todayKey(), settings = DEFAULT_SETT
 
   const yesterday = addDays(today, -1);
   const tasks: Task[] = [
-    task({ title: "Review product roadmap", start: "09:00", duration: 60, projectId: work.id, priority: "high", done: true, completedAt: now }),
-    task({ title: "Team standup", start: "10:30", duration: 15, projectId: work.id, done: true, completedAt: now }),
-    task({ title: "Draft Q3 proposal", start: "13:00", duration: 90, projectId: work.id, priority: "high", notes: "Outline goals, budget and the three key bets." }),
-    task({ title: "Workout", start: "18:00", duration: 45, projectId: personal.id }),
-    task({ title: "Read 20 pages", projectId: learning.id, duration: 30 }),
-    task({ title: "Reply to design feedback", projectId: work.id, duration: 20, priority: "low" }),
-    task({ title: "Plan weekend trip", date: addDays(today, 1), projectId: personal.id }),
-    task({ title: "1:1 with Sam", date: addDays(today, 1), start: "11:00", duration: 30, projectId: work.id }),
-    task({ title: "Finish online course module", date: addDays(today, 3), projectId: learning.id, duration: 60 }),
-    task({ title: "Send invoice", date: yesterday, projectId: work.id, priority: "high" }),
-    task({ title: "Book dentist appointment", date: null, projectId: personal.id, duration: 15 }),
-    task({ title: "Research note-taking methods", date: null, projectId: learning.id }),
+    task({ title: t.roadmap, start: "09:00", duration: 60, projectId: work.id, priority: "high", done: true, completedAt: now }),
+    task({ title: t.standup, start: "10:30", duration: 15, projectId: work.id, done: true, completedAt: now }),
+    task({ title: t.proposal, start: "13:00", duration: 90, projectId: work.id, priority: "high", notes: t.proposalNotes }),
+    task({ title: t.workout, start: "18:00", duration: 45, projectId: personal.id }),
+    task({ title: t.read, projectId: learning.id, duration: 30 }),
+    task({ title: t.feedback, projectId: work.id, duration: 20, priority: "low" }),
+    task({ title: t.trip, date: addDays(today, 1), projectId: personal.id }),
+    task({ title: t.oneOnOne, date: addDays(today, 1), start: "11:00", duration: 30, projectId: work.id }),
+    task({ title: t.course, date: addDays(today, 3), projectId: learning.id, duration: 60 }),
+    task({ title: t.invoice, date: yesterday, projectId: work.id, priority: "high" }),
+    task({ title: t.dentist, date: null, projectId: personal.id, duration: 15 }),
+    task({ title: t.notes, date: null, projectId: learning.id }),
   ];
   // Some history so Insights has something to show.
   for (let i = 1; i <= 13; i++) {
@@ -54,7 +57,7 @@ export function sampleState(today: DateKey = todayKey(), settings = DEFAULT_SETT
     const n = Math.floor(rand() * 4) + 1;
     for (let j = 0; j < n; j++) {
       const done = fromKey(day).getTime() + (9 + j * 2) * 3_600_000;
-      tasks.push(task({ title: `Archived task ${i}.${j + 1}`, date: day, done: true, completedAt: done, projectId: [work.id, personal.id, learning.id][j % 3] }));
+      tasks.push(task({ title: interpolate(t.archived, { day: i, n: j + 1 }), date: day, done: true, completedAt: done, projectId: [work.id, personal.id, learning.id][j % 3] }));
     }
   }
 
@@ -63,8 +66,8 @@ export function sampleState(today: DateKey = todayKey(), settings = DEFAULT_SETT
     for (let i = 1; i <= 45; i++) if (rand() < rate) log[addDays(today, -i)] = true;
     return { id: newId(), name, targetPerWeek, log, archived: false, createdAt: now };
   };
-  const habits = [habit("Read", 7, 0.85), habit("Drink water", 7, 0.7), habit("Exercise", 4, 0.55), habit("Meditate", 5, 0.6)];
-  // Make "Read" a clean, motivating streak.
+  const habits = [habit(text.habits.read, 7, 0.85), habit(text.habits.water, 7, 0.7), habit(text.habits.exercise, 4, 0.55), habit(text.habits.meditate, 5, 0.6)];
+  // Make the reading habit a clean, motivating streak.
   for (let i = 1; i <= 12; i++) habits[0].log[addDays(today, -i)] = true;
 
   const sessions: FocusSession[] = [];
@@ -81,7 +84,7 @@ export function sampleState(today: DateKey = todayKey(), settings = DEFAULT_SETT
       sessions.push({
         id: newId(),
         taskId: ids[Math.floor(rand() * ids.length)] ?? null,
-        label: fromLearning ? "Study session" : "Deep work",
+        label: fromLearning ? text.sessions.study : text.sessions.deep,
         startedAt,
         endedAt: startedAt + minutes * 60_000,
         minutes,

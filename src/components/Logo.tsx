@@ -21,6 +21,8 @@ export function Logo({ showWordmark = true, className = "", size = 32 }: LogoPro
       className={`inline-flex items-center gap-2.5 ${className}`}
       aria-label="DayFlow"
       role="img"
+      // A brand lockup never mirrors: mark first, then wordmark, in every language.
+      dir="ltr"
     >
       <svg
         width={size}

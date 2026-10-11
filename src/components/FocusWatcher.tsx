@@ -3,6 +3,7 @@ import { useActions, useAppState } from "../lib/store/context";
 import { useToast } from "../lib/toast";
 import { useFocusClock } from "../lib/useFocusClock";
 import { formatClock } from "../lib/dates";
+import { useI18n } from "../i18n/context";
 
 const BASE_TITLE = "DayFlow";
 
@@ -40,6 +41,7 @@ export function FocusWatcher() {
   const { activeFocus, settings } = useAppState();
   const actions = useActions();
   const toast = useToast();
+  const { m, f } = useI18n();
   const clock = useFocusClock(activeFocus);
 
   const done = clock !== null && clock.remainingMs <= 0;
@@ -51,16 +53,16 @@ export function FocusWatcher() {
     finished.current = activeFocus.firstStartedAt;
     actions.finishFocus(true);
     chime();
-    const message = `Focus session complete — ${activeFocus.durationMin} min on “${activeFocus.label}”.`;
+    const message = f(m.focus.complete, { min: activeFocus.durationMin, label: activeFocus.label });
     toast.show({ message, tone: "success" });
     if (settings.notifications && "Notification" in window && Notification.permission === "granted" && document.hidden) {
       try {
-        new Notification("Focus session complete", { body: message, icon: "/favicon.svg" });
+        new Notification(m.focus.notificationTitle, { body: message, icon: "/favicon.svg" });
       } catch {
         /* some browsers only allow notifications from a service worker */
       }
     }
-  }, [done, activeFocus, actions, toast, settings.notifications]);
+  }, [done, activeFocus, actions, toast, settings.notifications, m, f]);
 
   useEffect(() => {
     if (!clock || done) {

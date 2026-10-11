@@ -199,7 +199,9 @@ export function reducer(state: State, action: Action): State {
       return action.state;
 
     case "data/reset":
-      return emptyState();
+      // Clears the workspace but keeps the account and preferences (name,
+      // language, style, finished onboarding) — so the welcome quiz never repeats.
+      return { ...emptyState(), settings: state.settings };
 
     default: {
       const exhaustive: never = action;

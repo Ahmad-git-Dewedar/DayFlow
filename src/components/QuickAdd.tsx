@@ -4,6 +4,7 @@ import { parseQuickAdd } from "../lib/quickAdd";
 import { formatDuration, formatTime, type DateKey } from "../lib/dates";
 import { IconClock, IconPlus } from "./icons";
 import { ProjectDot } from "./ui";
+import { useI18n } from "../i18n/context";
 
 type Props = {
   /** Day new tasks are planned for; null adds to the Inbox. */
@@ -13,8 +14,10 @@ type Props = {
   placeholder?: string;
 };
 
-export function QuickAdd({ date, projectId = null, placeholder = "Add a task" }: Props) {
+export function QuickAdd({ date, projectId = null, placeholder }: Props) {
   const { projects } = useAppState();
+  const { m, f } = useI18n();
+  const label = placeholder ?? m.today.addToday;
   const actions = useActions();
   const [value, setValue] = useState("");
   const hintId = useId();
@@ -53,8 +56,8 @@ export function QuickAdd({ date, projectId = null, placeholder = "Add a task" }:
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={placeholder}
-          aria-label={placeholder}
+          placeholder={label}
+          aria-label={label}
           aria-describedby={hintId}
           maxLength={300}
           className="h-11 min-w-0 flex-1 bg-transparent text-[0.95rem] text-ink outline-none placeholder:text-muted"
@@ -64,7 +67,7 @@ export function QuickAdd({ date, projectId = null, placeholder = "Add a task" }:
           disabled={!value.trim()}
           className="rounded-lg px-2.5 py-1 text-sm font-semibold text-brand-600 transition-opacity disabled:opacity-0 dark:text-brand-400"
         >
-          Add
+          {m.quickAdd.add}
         </button>
       </div>
       {/* Floats below the field so showing it never pushes the page around. */}
@@ -92,7 +95,16 @@ export function QuickAdd({ date, projectId = null, placeholder = "Add a task" }:
           </>
         ) : (
           <span>
-            Tip: type a time, length or project — e.g. <span className="text-ink-soft">“Write report {date ? "2pm " : ""}45m{projects[0] ? ` #${projects[0].name.toLowerCase().replace(/\s+/g, "-")}` : ""}”</span>
+            {f(m.quickAdd.tip, {
+              example: [
+                m.quickAdd.exampleTitle,
+                date ? m.quickAdd.exampleTime : null,
+                m.quickAdd.exampleLength,
+                projects[0] ? `#${projects[0].name.replace(/\s+/g, "-")}` : null,
+              ]
+                .filter(Boolean)
+                .join(" "),
+            })}
           </span>
         )}
       </p>

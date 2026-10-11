@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { cx } from "../lib/utils";
 import { niceScale } from "../lib/chartScale";
+import { useI18n } from "../i18n/context";
 
 /*
  * Small, dependency-free charts following the dataviz spec:
@@ -27,6 +28,7 @@ type ColumnChartProps = {
 };
 
 export function ColumnChart({ data, format, kind, reference, highlightKey, height = 176, title, tickFormat = format }: ColumnChartProps) {
+  const { m } = useI18n();
   const max = Math.max(0, ...data.map((d) => d.value), reference?.value ?? 0);
   const { ticks, top } = niceScale(max, kind);
   const y = (v: number) => (top === 0 ? 0 : (v / top) * 100);
@@ -38,9 +40,9 @@ export function ColumnChart({ data, format, kind, reference, highlightKey, heigh
     <figure className="flex flex-col gap-3" aria-label={title}>
       <div className="flex gap-2">
         {/* y-axis ticks */}
-        <div className="relative w-10 shrink-0 text-right text-[0.7rem] tabular-nums text-muted" style={{ height }} aria-hidden>
+        <div className="relative w-10 shrink-0 text-end text-[0.7rem] tabular-nums text-muted" style={{ height }} aria-hidden>
           {ticks.map((t) => (
-            <span key={t} className="absolute right-0 translate-y-1/2 whitespace-nowrap" style={{ bottom: `${y(t)}%` }}>
+            <span key={t} className="absolute end-0 translate-y-1/2 whitespace-nowrap" style={{ bottom: `${y(t)}%` }}>
               {tickFormat(t)}
             </span>
           ))}
@@ -55,7 +57,7 @@ export function ColumnChart({ data, format, kind, reference, highlightKey, heigh
           {reference && reference.value > 0 && (
             <div className="pointer-events-none absolute inset-x-0 z-10" style={{ bottom: `${y(reference.value)}%` }} aria-hidden>
               <div className="h-px bg-ink-soft/60" />
-              <span className="absolute -top-4.5 right-0 rounded bg-surface px-1 text-[0.68rem] font-medium text-ink-soft">
+              <span className="absolute -top-4.5 end-0 rounded bg-surface px-1 text-[0.68rem] font-medium text-ink-soft">
                 {reference.label}
               </span>
             </div>
@@ -112,7 +114,7 @@ export function ColumnChart({ data, format, kind, reference, highlightKey, heigh
       </div>
 
       {/* x-axis labels */}
-      <div className="ml-12 grid" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} aria-hidden>
+      <div className="ms-12 grid" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} aria-hidden>
         {data.map((d) => (
           <div key={d.key} className="flex flex-col items-center leading-tight">
             <span className={cx("text-xs", d.key === highlightKey ? "font-semibold text-ink" : "text-ink-soft")}>{d.label}</span>
@@ -121,7 +123,7 @@ export function ColumnChart({ data, format, kind, reference, highlightKey, heigh
         ))}
       </div>
 
-      <ChartTable caption={title} rows={data.map((d) => [`${d.label}${d.sublabel ? ` ${d.sublabel}` : ""}`, format(d.value)])} headers={["Day", "Value"]} />
+      <ChartTable caption={title} rows={data.map((d) => [`${d.label}${d.sublabel ? ` ${d.sublabel}` : ""}`, format(d.value)])} headers={[m.charts.day, m.charts.value]} />
     </figure>
   );
 }
@@ -130,6 +132,7 @@ export type BarRow = { key: string; label: string; value: number; swatch: ReactN
 
 /** Horizontal bars, sorted by the caller. Each bar is direct-labeled (name + value). */
 export function BarList({ rows, format, title }: { rows: BarRow[]; format: (v: number) => string; title: string }) {
+  const { m } = useI18n();
   const max = Math.max(1, ...rows.map((r) => r.value));
   return (
     <figure className="flex flex-col gap-3" aria-label={title}>
@@ -152,28 +155,29 @@ export function BarList({ rows, format, title }: { rows: BarRow[]; format: (v: n
           </li>
         ))}
       </ul>
-      <ChartTable caption={title} headers={["Project", "Focus time"]} rows={rows.map((r) => [r.label, format(r.value)])} />
+      <ChartTable caption={title} headers={[m.charts.project, m.charts.focusTime]} rows={rows.map((r) => [r.label, format(r.value)])} />
     </figure>
   );
 }
 
 /** Accessible table twin of a chart, collapsed by default. */
 export function ChartTable({ caption, headers, rows }: { caption: string; headers: string[]; rows: string[][] }) {
+  const { m } = useI18n();
   const id = useId();
   return (
     <details className="group/tbl text-sm">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 rounded text-xs font-medium text-muted hover:text-ink [&::-webkit-details-marker]:hidden">
-        <span className="group-open/tbl:hidden">View as table</span>
-        <span className="hidden group-open/tbl:inline">Hide table</span>
+        <span className="group-open/tbl:hidden">{m.charts.viewTable}</span>
+        <span className="hidden group-open/tbl:inline">{m.charts.hideTable}</span>
       </summary>
-      <table className="mt-2 w-full border-collapse text-left" aria-describedby={id}>
+      <table className="mt-2 w-full border-collapse text-start" aria-describedby={id}>
         <caption id={id} className="sr-only">
           {caption}
         </caption>
         <thead>
           <tr className="border-b border-line text-xs text-muted">
             {headers.map((h) => (
-              <th key={h} scope="col" className="py-1.5 pr-4 font-medium">
+              <th key={h} scope="col" className="py-1.5 pe-4 font-medium">
                 {h}
               </th>
             ))}
@@ -184,11 +188,11 @@ export function ChartTable({ caption, headers, rows }: { caption: string; header
             <tr key={r[0]} className="border-b border-line last:border-0">
               {r.map((c, i) =>
                 i === 0 ? (
-                  <th key={i} scope="row" className="py-1.5 pr-4 font-normal text-ink-soft">
+                  <th key={i} scope="row" className="py-1.5 pe-4 font-normal text-ink-soft">
                     {c}
                   </th>
                 ) : (
-                  <td key={i} className="py-1.5 pr-4 tabular-nums text-ink">
+                  <td key={i} className="py-1.5 pe-4 tabular-nums text-ink">
                     {c}
                   </td>
                 ),

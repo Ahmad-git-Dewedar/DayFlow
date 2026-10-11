@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -12,25 +12,37 @@
     <title>DayFlow</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- The Arabic family is only downloaded when Arabic text is on screen (unicode-range). -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Sora:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/assets/index-DWNaxvXj.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DrtDFpqA.css">
+    <script type="module" crossorigin src="/assets/index-XsJSWcL_.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C58cO2ww.css">
   </head>
   <body>
     <script>
-      // Set theme before first paint to avoid a flash of the wrong theme.
+      // Set theme, language and text direction before first paint, so there is
+      // no flash of the wrong theme or a left-to-right layout for Arabic users.
       (function () {
+        var root = document.documentElement;
         try {
           var s = localStorage.getItem("dayflow-theme");
           var dark = s === "dark" || (s === null && matchMedia("(prefers-color-scheme: dark)").matches);
-          if (dark) document.documentElement.classList.add("dark");
-          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+          if (dark) root.classList.add("dark");
+          root.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+        try {
+          var lang = localStorage.getItem("dayflow-lang");
+          if (lang !== "ar" && lang !== "en") {
+            var first = (navigator.languages && navigator.languages[0]) || navigator.language || "";
+            lang = /^ar/i.test(first) ? "ar" : "en";
+          }
+          root.lang = lang;
+          root.dir = lang === "ar" ? "rtl" : "ltr";
         } catch (e) {}
       })();
     </script>
-    <div id="root"></div>
+    <div id="root"></div>
   </body>
 </html>

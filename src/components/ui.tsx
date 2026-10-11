@@ -5,10 +5,13 @@ import { projectDot } from "../lib/projectColors";
 
 /** Page heading row used by every screen, so titles and actions line up. */
 export function PageHeader({
+  eyebrow,
   title,
   subtitle,
   actions,
 }: {
+  /** Small line above the title, e.g. a greeting. */
+  eyebrow?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   actions?: ReactNode;
@@ -16,6 +19,7 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div className="flex min-w-0 flex-col gap-1">
+        {eyebrow && <p className="text-sm font-medium text-brand-600 dark:text-brand-400">{eyebrow}</p>}
         <h1 className="text-2xl font-semibold sm:text-[1.75rem]">{title}</h1>
         {subtitle && <p className="text-ink-soft">{subtitle}</p>}
       </div>

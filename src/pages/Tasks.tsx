@@ -14,6 +14,7 @@ import { TaskEditor } from "../components/TaskEditor";
 import { ProjectEditor } from "../components/ProjectEditor";
 import { IconChevronRight, IconEdit, IconInbox, IconListChecks, IconPlus } from "../components/icons";
 import { cx } from "../lib/utils";
+import { useI18n } from "../i18n/context";
 
 function Section({
   title,
@@ -39,7 +40,7 @@ function Section({
     return (
       <details open={defaultOpen} className="group/sec">
         <summary className="flex cursor-pointer list-none items-center gap-2 px-5 pb-1 pt-3 hover:text-ink [&::-webkit-details-marker]:hidden">
-          <IconChevronRight width={14} height={14} className="text-muted transition-transform group-open/sec:rotate-90" />
+          <IconChevronRight width={14} height={14} className="text-muted transition-transform rtl:-scale-x-100 ltr:group-open/sec:rotate-90 rtl:group-open/sec:-rotate-90" />
           {heading}
         </summary>
         <ul className="flex flex-col px-2">{children}</ul>
@@ -57,15 +58,16 @@ function Section({
 function ProjectChips({ activeId, onNew }: { activeId: string | null; onNew: () => void }) {
   const { projects } = useAppState();
   const [, setParams] = useSearchParams();
+  const { m } = useI18n();
   const chip = (selected: boolean) =>
     cx(
       "inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
       selected ? "border-brand-400 bg-brand-50 text-brand-700 dark:bg-brand-900/50 dark:text-brand-200" : "border-line text-ink-soft hover:border-brand-300",
     );
   return (
-    <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:hidden" role="group" aria-label="Filter by project">
+    <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:hidden" role="group" aria-label={m.tasks.filter}>
       <button type="button" className={chip(activeId === null)} aria-pressed={activeId === null} onClick={() => setParams({})}>
-        All tasks
+        {m.tasks.all}
       </button>
       {projects.map((p) => (
         <button key={p.id} type="button" className={chip(activeId === p.id)} aria-pressed={activeId === p.id} onClick={() => setParams({ project: p.id })}>
@@ -73,7 +75,7 @@ function ProjectChips({ activeId, onNew }: { activeId: string | null; onNew: () 
         </button>
       ))}
       <button type="button" className={chip(false)} onClick={onNew}>
-        <IconPlus width={15} height={15} /> Project
+        <IconPlus width={15} height={15} /> {m.tasks.projectChip}
       </button>
     </div>
   );
@@ -88,11 +90,12 @@ export function Tasks() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Task | null>(null);
   const [projectEditor, setProjectEditor] = useState<{ project: Project | null } | null>(null);
+  const { m, f } = useI18n();
 
   const projectMap = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const projectId = params.get("project");
   const project = projectId ? projectMap.get(projectId) ?? null : null;
-  usePageTitle(project ? project.name : "Tasks");
+  usePageTitle(project ? project.name : m.tasks.title);
 
   const today = todayKey();
 
@@ -143,13 +146,13 @@ export function Tasks() {
               {project.name}
             </span>
           ) : (
-            "Tasks"
+            m.tasks.title
           )
         }
-        subtitle={`${openCount} open${groups.completedTotal ? ` · ${groups.completedTotal} completed` : ""}`}
+        subtitle={f(m.tasks.open, { n: openCount }) + (groups.completedTotal ? f(m.tasks.completedSuffix, { n: groups.completedTotal }) : "")}
         actions={
           project ? (
-            <IconButton label={`Edit project ${project.name}`} onClick={() => setProjectEditor({ project })}>
+            <IconButton label={f(m.tasks.editProject, { name: project.name })} onClick={() => setProjectEditor({ project })}>
               <IconEdit />
             </IconButton>
           ) : undefined
@@ -159,12 +162,12 @@ export function Tasks() {
       <ProjectChips activeId={project?.id ?? null} onNew={() => setProjectEditor({ project: null })} />
 
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
-        <QuickAdd date={null} projectId={project?.id ?? null} placeholder={project ? `Add a task to ${project.name}` : "Add a task to your Inbox"} />
+        <QuickAdd date={null} projectId={project?.id ?? null} placeholder={project ? f(m.tasks.addProject, { name: project.name }) : m.tasks.addInbox} />
         <input
           type="search"
           className="field h-11"
-          placeholder="Search tasks"
-          aria-label="Search tasks"
+          placeholder={m.tasks.search}
+          aria-label={m.tasks.search}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -173,26 +176,26 @@ export function Tasks() {
       <Card>
         {groups.total === 0 ? (
           query ? (
-            <EmptyState icon={<IconListChecks width={22} height={22} />} title={`No tasks match “${query}”`} action={<Button variant="secondary" size="sm" onClick={() => setQuery("")}>Clear search</Button>} />
+            <EmptyState icon={<IconListChecks width={22} height={22} />} title={f(m.tasks.noMatch, { q: query })} action={<Button variant="secondary" size="sm" onClick={() => setQuery("")}>{m.tasks.clearSearch}</Button>} />
           ) : (
-            <EmptyState icon={<IconInbox width={22} height={22} />} title={project ? `No tasks in ${project.name} yet` : "Your task list is empty"}>
-              Capture anything on your mind above. Unscheduled tasks wait in the Inbox until you plan them for a day.
+            <EmptyState icon={<IconInbox width={22} height={22} />} title={project ? f(m.tasks.emptyProject, { name: project.name }) : m.tasks.empty}>
+              {m.tasks.emptyBody}
             </EmptyState>
           )
         ) : (
           <div className="flex flex-col pb-3">
             {groups.overdue.length > 0 && (
-              <Section title="Overdue" count={groups.overdue.length} tone="danger">
+              <Section title={m.tasks.overdue} count={groups.overdue.length} tone="danger">
                 {groups.overdue.map((t) => item(t, true))}
               </Section>
             )}
             {groups.inbox.length > 0 && (
-              <Section title="Inbox" count={groups.inbox.length}>
+              <Section title={m.tasks.inbox} count={groups.inbox.length}>
                 {groups.inbox.map((t) => item(t))}
               </Section>
             )}
             {groups.today.length > 0 && (
-              <Section title="Today" count={groups.today.length}>
+              <Section title={m.tasks.today} count={groups.today.length}>
                 {groups.today.map((t) => item(t))}
               </Section>
             )}
@@ -202,10 +205,10 @@ export function Tasks() {
               </Section>
             ))}
             {groups.completed.length > 0 && (
-              <Section title="Completed" count={groups.completedTotal} collapsible defaultOpen={openCount === 0}>
+              <Section title={m.tasks.completed} count={groups.completedTotal} collapsible defaultOpen={openCount === 0}>
                 {groups.completed.map((t) => item(t, true))}
                 {groups.completedTotal > groups.completed.length && (
-                  <li className="px-3 py-2 text-xs text-muted">Showing the 50 most recent.</li>
+                  <li className="px-3 py-2 text-xs text-muted">{m.tasks.recentOnly}</li>
                 )}
               </Section>
             )}

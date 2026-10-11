@@ -1,8 +1,9 @@
-import { Suspense, lazy } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Suspense, lazy, useState } from "react";
+import { Navigate, Outlet, Route, Routes, useSearchParams } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { Today } from "./pages/Today";
 import { useAppState } from "./lib/store/context";
+import { useI18n } from "./i18n/context";
 
 // Today is the usual landing screen; everything else loads on demand.
 const Welcome = lazy(() => import("./pages/Welcome").then((m) => ({ default: m.Welcome })));
@@ -14,8 +15,9 @@ const Settings = lazy(() => import("./pages/Settings").then((m) => ({ default: m
 const NotFound = lazy(() => import("./pages/NotFound").then((m) => ({ default: m.NotFound })));
 
 function Spinner() {
+  const { m } = useI18n();
   return (
-    <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label="Loading">
+    <div className="flex min-h-[50vh] items-center justify-center" role="status" aria-label={m.common.loading}>
       <span className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-brand-500" />
     </div>
   );
@@ -38,11 +40,25 @@ function AppGate() {
   );
 }
 
+/**
+ * The quiz runs once. After it is finished (or skipped) it only opens again
+ * when the user explicitly retakes it from Settings (?retake=1).
+ */
+function WelcomeRoute() {
+  const { settings } = useAppState();
+  const [params] = useSearchParams();
+  // Decided once, on arrival — finishing the quiz must not trigger this
+  // redirect and override the navigation to the chosen style's start page.
+  const [doneOnArrival] = useState(() => settings.onboarded);
+  if (doneOnArrival && params.get("retake") !== "1") return <Navigate to="/" replace />;
+  return <Welcome />;
+}
+
 export function App() {
   return (
     <Suspense fallback={<Spinner />}>
       <Routes>
-        <Route path="/welcome" element={<Welcome />} />
+        <Route path="/welcome" element={<WelcomeRoute />} />
         <Route element={<AppGate />}>
           <Route path="/" element={<Today />} />
           <Route path="/tasks" element={<Tasks />} />

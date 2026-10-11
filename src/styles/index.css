@@ -9,8 +9,9 @@
    with a vibrant "checkmark" emerald as the single accent.
 ---------------------------------------------------------------------------- */
 @theme {
-  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Latin glyphs come from Sora/Inter; Arabic glyphs fall through to IBM Plex Sans Arabic. */
+  --font-display: "Sora", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
 
   /* Brand scale */
   --color-brand-50: #eef6f1;
@@ -60,7 +61,18 @@
   --logo-a: #0e281d;
   --logo-b: #1d543c;
   --logo-check: #49a378;
+  --heading-leading: 1.1;
+  --heading-tracking: -0.02em;
   color-scheme: light;
+}
+
+/* Arabic: letter-spacing breaks joined script, and the script needs taller lines. */
+:root:lang(ar) {
+  --heading-leading: 1.4;
+  --heading-tracking: 0;
+  --tracking-wider: 0;
+  --tracking-wide: 0;
+  --tracking-tight: 0;
 }
 
 /* Dark theme */
@@ -103,8 +115,8 @@
   h1, h2, h3, h4 {
     font-family: var(--font-display);
     color: var(--ink);
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+    line-height: var(--heading-leading);
+    letter-spacing: var(--heading-tracking);
     font-weight: 600;
   }
 
@@ -164,11 +176,12 @@
   .field[aria-invalid="true"] { border-color: #e5484d; }
   select.field {
     appearance: none;
-    padding-right: 2.25rem;
+    padding-inline-end: 2.25rem;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23647a70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
   }
+  [dir="rtl"] select.field { background-position: left 0.75rem center; }
 
   /* Native <dialog> modal: free focus trapping, Esc handling and inert page. */
   .modal {

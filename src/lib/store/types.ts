@@ -1,4 +1,5 @@
 import type { DateKey, WeekStart } from "../dates";
+import type { Lang } from "../../i18n/core";
 
 export type Priority = "low" | "normal" | "high";
 
@@ -84,6 +85,9 @@ export type Settings = {
   profile: ProfileId | null;
   /** Which Today view opens first on small screens. */
   todayView: "list" | "timeline";
+  /** The local account: a display name and UI language. No sign-in. */
+  name: string;
+  language: Lang;
 };
 
 export const PROFILE_IDS = ["planner", "habits", "focus", "simple"] as const;
@@ -107,6 +111,8 @@ export const DEFAULT_SETTINGS: Settings = {
   onboarded: false,
   profile: null,
   todayView: "list",
+  name: "",
+  language: "en",
 };
 
 export function emptyState(): State {

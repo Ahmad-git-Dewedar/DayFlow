@@ -21,11 +21,3 @@ export const projectBlock: Record<ProjectColor, string> = {
   violet: "bg-violet-100 text-violet-950 border-violet-500 dark:bg-violet-950/80 dark:text-violet-50 dark:border-violet-400",
   rose: "bg-rose-100 text-rose-950 border-rose-600 dark:bg-rose-950/80 dark:text-rose-50 dark:border-rose-500",
 };
-
-export const PROJECT_COLOR_LABELS: Record<ProjectColor, string> = {
-  emerald: "Green",
-  sky: "Blue",
-  amber: "Amber",
-  violet: "Violet",
-  rose: "Rose",
-};

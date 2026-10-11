@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { ToastContext, type ToastInput } from "../lib/toast";
 import { IconCheck, IconClose } from "./icons";
 import { cx } from "../lib/utils";
+import { useI18n } from "../i18n/context";
 
 type Toast = ToastInput & { id: number };
 
 const DURATION = 5000;
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
+  const { m } = useI18n();
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
@@ -22,7 +24,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className="animate-toast-in pointer-events-auto flex w-full items-center gap-3 rounded-xl bg-brand-950 py-2.5 pl-4 pr-2 text-sm text-white shadow-[var(--shadow-lift)] dark:bg-surface-3 dark:text-ink"
+      className="animate-toast-in pointer-events-auto flex w-full items-center gap-3 rounded-xl bg-brand-950 py-2.5 ps-4 pe-2 text-sm text-white shadow-[var(--shadow-lift)] dark:bg-surface-3 dark:text-ink"
     >
       {toast.tone === "success" && (
         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-400 text-white">
@@ -44,7 +46,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       )}
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={m.common.dismiss}
         onClick={() => onDismiss(toast.id)}
         className="rounded-lg p-1.5 text-white/60 hover:bg-white/10 hover:text-white dark:text-muted dark:hover:bg-surface-2 dark:hover:text-ink"
       >

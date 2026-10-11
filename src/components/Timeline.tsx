@@ -3,6 +3,7 @@ import type { Project, Task } from "../lib/store/types";
 import { formatTime, minutesToTime, nowMinutes, timeToMinutes } from "../lib/dates";
 import { projectBlock } from "../lib/projectColors";
 import { cx } from "../lib/utils";
+import { useI18n } from "../i18n/context";
 import { layoutBlocks, type Block, type Placed } from "../lib/timelineLayout";
 
 const HOUR_PX = 56;
@@ -35,6 +36,7 @@ type Props = {
 };
 
 export function Timeline({ tasks, projects, isToday, onEdit, onChange, onCreateAt }: Props) {
+  const { m, f } = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const holdTimer = useRef<number | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -206,11 +208,11 @@ export function Timeline({ tasks, projects, isToday, onEdit, onChange, onCreateA
 
   return (
     <div ref={scrollRef} className="relative max-h-[34rem] overflow-y-auto overscroll-contain lg:max-h-[calc(100dvh-14rem)]">
-      <div className="relative ml-14 mr-2 select-none" style={{ height: height + 16 }}>
+      <div className="relative ms-14 me-2 select-none" style={{ height: height + 16 }}>
         {/* hour grid */}
         {hours.map((m) => (
           <div key={m} className="pointer-events-none absolute inset-x-0" style={{ top: (m - rangeStart) * PX_PER_MIN + 8 }}>
-            <span className="absolute -left-14 -top-2 w-11 text-right text-[0.7rem] tabular-nums text-muted">
+            <span className="absolute -start-14 -top-2 w-11 text-end text-[0.7rem] tabular-nums text-muted">
               {formatTime(minutesToTime(m === 24 * 60 ? 24 * 60 - 1 : m)).replace(":00", "")}
             </span>
             <div className="h-px bg-line" />
@@ -223,7 +225,7 @@ export function Timeline({ tasks, projects, isToday, onEdit, onChange, onCreateA
           style={{ top: 8, height }}
           onClick={onGridClick}
           role="presentation"
-          title="Click an empty slot to add a task"
+          title={m.timeline.slotHint}
         >
           {placed.map((b) => {
             const project = b.task.projectId ? projects.get(b.task.projectId) : undefined;
@@ -238,7 +240,8 @@ export function Timeline({ tasks, projects, isToday, onEdit, onChange, onCreateA
                 style={{
                   top: (b.start - rangeStart) * PX_PER_MIN,
                   height: blockHeight,
-                  left: `${(b.lane / b.lanes) * 100}%`,
+                  // Logical inset: lanes run from the right in Arabic.
+                  insetInlineStart: `${(b.lane / b.lanes) * 100}%`,
                   width: `${100 / b.lanes}%`,
                 }}
               >
@@ -258,9 +261,14 @@ export function Timeline({ tasks, projects, isToday, onEdit, onChange, onCreateA
                   }}
                   onKeyDown={(e) => onBlockKey(e, b)}
                   aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+Shift+ArrowUp Alt+Shift+ArrowDown"
-                  aria-label={`${b.task.title}, ${formatTime(minutesToTime(b.start))} to ${formatTime(end)}${b.task.done ? ", done" : ""}. Alt plus arrow keys move it, add Shift to resize.`}
+                  aria-label={f(m.timeline.block, {
+                    title: b.task.title,
+                    start: formatTime(minutesToTime(b.start)),
+                    end: formatTime(end),
+                    done: b.task.done ? m.timeline.doneSuffix : "",
+                  })}
                   className={cx(
-                    "group/block relative flex h-full w-full cursor-grab touch-pan-y flex-col overflow-hidden rounded-lg border-l-[3px] px-2.5 text-left active:cursor-grabbing",
+                    "group/block relative flex h-full w-full cursor-grab touch-pan-y flex-col overflow-hidden rounded-lg border-s-[3px] px-2.5 text-start active:cursor-grabbing",
                     compact ? "justify-center py-0.5" : "py-1.5",
                     project ? projectBlock[project.color] : projectBlock.emerald,
                     b.task.done && "opacity-55",
@@ -295,7 +303,7 @@ export function Timeline({ tasks, projects, isToday, onEdit, onChange, onCreateA
         {showNow && (
           <div className="pointer-events-none absolute inset-x-0 z-10" style={{ top: (now - rangeStart) * PX_PER_MIN + 8 }} aria-hidden>
             <div className="relative h-0.5 bg-[#e5484d]">
-              <span className="absolute -left-1.5 -top-[5px] h-3 w-3 rounded-full bg-[#e5484d]" />
+              <span className="absolute -start-1.5 -top-[5px] h-3 w-3 rounded-full bg-[#e5484d]" />
             </div>
           </div>
         )}
