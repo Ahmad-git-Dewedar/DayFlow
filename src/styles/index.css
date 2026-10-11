@@ -1,0 +1,208 @@
+@import "tailwindcss";
+
+/* Dark mode is driven by a `.dark` class on <html> (set from system pref + user toggle). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ----------------------------------------------------------------------------
+   DayFlow design tokens
+   Palette derived directly from the logo: a forest-green → emerald gradient
+   with a vibrant "checkmark" emerald as the single accent.
+---------------------------------------------------------------------------- */
+@theme {
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand scale */
+  --color-brand-50: #eef6f1;
+  --color-brand-100: #d6ebe0;
+  --color-brand-200: #aed8c3;
+  --color-brand-300: #7cbf9f;
+  --color-brand-400: #49a378; /* emerald — the checkmark accent */
+  --color-brand-500: #2f855e; /* primary */
+  --color-brand-600: #236b4b;
+  --color-brand-700: #1d543c; /* forest */
+  --color-brand-800: #163f2d;
+  --color-brand-900: #0e281d; /* deep */
+  --color-brand-950: #071711;
+
+  /* Semantic tokens (resolve to the theme vars below) */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+
+  --shadow-soft: 0 1px 2px rgba(7, 23, 17, 0.04), 0 8px 24px -12px rgba(7, 23, 17, 0.14);
+  --shadow-lift: 0 2px 4px rgba(7, 23, 17, 0.05), 0 24px 48px -24px rgba(7, 23, 17, 0.28);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Light theme */
+:root {
+  --surface: #ffffff;
+  --surface-2: #f5f8f6;
+  --surface-3: #eef3f0;
+  --ink: #0f1a15;
+  --ink-soft: #33483f;
+  --muted: #647a70;
+  --line: #e2e9e5;
+  --accent: #2f855e;
+  --logo-a: #0e281d;
+  --logo-b: #1d543c;
+  --logo-check: #49a378;
+  color-scheme: light;
+}
+
+/* Dark theme */
+:root.dark {
+  --surface: #0a1510;
+  --surface-2: #0f1e17;
+  --surface-3: #15271e;
+  --ink: #eef5f1;
+  --ink-soft: #c2d2ca;
+  --muted: #8ba599;
+  --line: #203229;
+  --accent: #49a378;
+  /* Lifted so the mark stays legible on dark surfaces. */
+  --logo-a: #236b4b;
+  --logo-b: #2f855e;
+  --logo-check: #8fd0ae;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    color: var(--ink);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-400);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-brand-400) 30%, transparent);
+  }
+}
+
+
+@theme {
+  --animate-fade-in: fade-in 0.25s var(--ease-out-soft);
+  --animate-rise-in: rise-in 0.3s var(--ease-out-soft);
+  --animate-toast-in: rise-in 0.25s var(--ease-out-soft);
+  --animate-pop: pop 0.3s var(--ease-out-soft);
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); }
+    60% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+}
+
+@layer components {
+  /* Shared form control look, used by inputs, selects and textareas. */
+  .field {
+    width: 100%;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--line);
+    background-color: var(--surface);
+    color: var(--ink);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field::placeholder { color: var(--muted); }
+  .field:hover { border-color: color-mix(in oklab, var(--color-brand-400) 45%, var(--line)); }
+  .field:focus-visible {
+    outline: none;
+    border-color: var(--color-brand-400);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-brand-400) 25%, transparent);
+  }
+  .field[aria-invalid="true"] { border-color: #e5484d; }
+  select.field {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23647a70' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+
+  /* Native <dialog> modal: free focus trapping, Esc handling and inert page. */
+  .modal {
+    width: min(100% - 2rem, 32rem);
+    max-height: min(100dvh - 2rem, 48rem);
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-lift);
+    overflow: auto;
+  }
+  .modal[open] { animation: var(--animate-rise-in); }
+  .modal::backdrop {
+    background: rgb(7 23 17 / 0.45);
+    animation: var(--animate-fade-in);
+  }
+
+  /* Hide the scrollbar on horizontally scrolling chip rows while keeping them scrollable. */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
+
+/* Honor reduced-motion everywhere as a safety net. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.001ms;
+    scroll-behavior: auto;
+  }
+  html { scroll-behavior: auto; }
+}
